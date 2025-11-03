@@ -7,11 +7,17 @@ import 'package:yad_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:yad_app/features/home/data/datasources/location_service.dart';
 import 'package:yad_app/features/home/data/datasources/places_service.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:yad_app/features/settings/presentation/bloc/theme_bloc.dart';
 import 'package:yad_app/shared/constants/app_constants.dart';
 
 final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
+  // Theme bloc - singleton for app-wide theme management
+  getIt.registerSingleton<ThemeBloc>(
+    ThemeBloc(),
+  );
+
   // Core services
   getIt.registerSingleton<NetworkService>(
     NetworkService(baseUrl: AppConstants.baseUrl),

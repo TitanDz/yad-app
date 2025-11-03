@@ -60,12 +60,10 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Minyan Connect',
+          'Yad-Yad',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -143,8 +141,6 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   hintText: 'Email',
                   hintStyle: const TextStyle(color: AppTheme.neutral500),
-                  filled: true,
-                  fillColor: AppTheme.neutral100,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
@@ -193,8 +189,6 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   hintText: 'Password',
                   hintStyle: const TextStyle(color: AppTheme.neutral500),
-                  filled: true,
-                  fillColor: AppTheme.neutral100,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
@@ -333,7 +327,6 @@ class _LoginPageState extends State<LoginPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
-        backgroundColor: AppTheme.neutral100,
         disabledForegroundColor: AppTheme.neutral400,
       ),
       child: Text(

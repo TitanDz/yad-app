@@ -13,6 +13,15 @@ import 'package:yad_app/features/home/presentation/pages/home_page.dart';
 import 'package:yad_app/features/settings/data/datasources/settings_datasource.dart';
 import 'package:yad_app/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:yad_app/features/settings/presentation/pages/initial_setup_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/settings_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/profile_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/notifications_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/prayer_preferences_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/visibility_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/travel_mode_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/report_problem_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/help_center_page.dart';
+import 'package:yad_app/features/settings/presentation/pages/about_page.dart';
 
 class AppRouter {
   static const String home = '/';
@@ -20,6 +29,15 @@ class AppRouter {
   static const String register = '/register';
   static const String otp = '/otp';
   static const String initialSetup = '/initial-setup';
+  static const String settings = '/settings';
+  static const String profile = '/profile';
+  static const String notifications = '/notifications';
+  static const String prayerPreferences = '/prayer-preferences';
+  static const String visibility = '/visibility';
+  static const String travelMode = '/travel-mode';
+  static const String reportProblem = '/report-problem';
+  static const String helpCenter = '/help-center';
+  static const String about = '/about';
 
   static final GoRouter router = GoRouter(
     initialLocation: login,
@@ -69,6 +87,47 @@ class AppRouter {
           ),
           child: const InitialSetupPage(),
         ),
+      ),
+      GoRoute(
+        path: settings,
+        builder: (context, state) => BlocProvider<SettingsBloc>(
+          create: (context) => SettingsBloc(
+            settingsDataSource: MockSettingsDataSource(),
+          ),
+          child: const SettingsPage(),
+        ),
+      ),
+      GoRoute(
+        path: profile,
+        builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(
+        path: notifications,
+        builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: prayerPreferences,
+        builder: (context, state) => const PrayerPreferencesPage(),
+      ),
+      GoRoute(
+        path: visibility,
+        builder: (context, state) => const VisibilityPage(),
+      ),
+      GoRoute(
+        path: travelMode,
+        builder: (context, state) => const TravelModePage(),
+      ),
+      GoRoute(
+        path: reportProblem,
+        builder: (context, state) => const ReportAProblemPage(),
+      ),
+      GoRoute(
+        path: helpCenter,
+        builder: (context, state) => const HelpCenterPage(),
+      ),
+      GoRoute(
+        path: about,
+        builder: (context, state) => const AboutPage(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

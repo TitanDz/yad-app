@@ -39,7 +39,7 @@ class AppTheme {
         centerTitle: true,
       ),
       textTheme: _textTheme(neutral900),
-      inputDecorationTheme: _inputDecorationTheme(),
+      inputDecorationTheme: _inputDecorationThemeLightMode(),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
@@ -71,7 +71,7 @@ class AppTheme {
         centerTitle: true,
       ),
       textTheme: _textTheme(Colors.white),
-      inputDecorationTheme: _inputDecorationTheme(),
+      inputDecorationTheme: _inputDecorationThemeDarkMode(),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
@@ -145,7 +145,7 @@ class AppTheme {
     );
   }
 
-  static InputDecorationTheme _inputDecorationTheme() {
+  static InputDecorationTheme _inputDecorationThemeLightMode() {
     return InputDecorationTheme(
       filled: true,
       fillColor: neutral100,
@@ -174,4 +174,35 @@ class AppTheme {
       errorStyle: const TextStyle(color: error),
     );
   }
+
+  static InputDecorationTheme _inputDecorationThemeDarkMode() {
+    return InputDecorationTheme(
+      filled: true,
+      fillColor: neutral800,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: neutral700),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: neutral700),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: error, width: 2),
+      ),
+      hintStyle: TextStyle(color: neutral400),
+      errorStyle: const TextStyle(color: error),
+    );
+  }
+
 }

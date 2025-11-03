@@ -59,7 +59,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Column(
         children: [
           // Top Header Bar (Avatar, Title, Settings)
@@ -69,7 +68,7 @@ class _HomePageState extends State<HomePage> {
             right: true,
             top: true,
             child: Container(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -79,30 +78,30 @@ class _HomePageState extends State<HomePage> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppTheme.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.person,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                       size: 24,
                     ),
                   ),
                   // Title
-                  const Text(
+                  Text(
                     'YAD-YAD',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.neutral900,
+                      color: Theme.of(context).colorScheme.onSurface,
                       letterSpacing: 1.5,
                     ),
                   ),
                   // Settings Button
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.settings,
-                      color: AppTheme.neutral900,
+                      color: Theme.of(context).colorScheme.onSurface,
                       size: 24,
                     ),
                     onPressed: () {
@@ -118,7 +117,7 @@ class _HomePageState extends State<HomePage> {
           // Divider
           Container(
             height: 1,
-            color: AppTheme.neutral200,
+            color: Theme.of(context).colorScheme.outlineVariant,
           ),
           // Map and Overlay
           Expanded(
@@ -128,9 +127,11 @@ class _HomePageState extends State<HomePage> {
                 BlocBuilder<HomeBloc, HomeState>(
                   builder: (context, state) {
                     if (state is HomeLoading) {
-                      return const Center(
+                      return Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       );
                     }
@@ -159,17 +160,17 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.error_outline,
                               size: 48,
-                              color: AppTheme.error,
+                              color: Theme.of(context).colorScheme.error,
                             ),
                             const SizedBox(height: 16),
                             Text(
                               state.message,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: AppTheme.error,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
                                 fontSize: 14,
                               ),
                             ),
@@ -205,9 +206,9 @@ class _HomePageState extends State<HomePage> {
                       builder: (context, state) {
                         if (state is HomeMapReady) {
                           return Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.only(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(20),
                                 topRight: Radius.circular(20),
                               ),
@@ -220,13 +221,13 @@ class _HomePageState extends State<HomePage> {
                                         Icon(
                                           Icons.location_off,
                                           size: 48,
-                                          color: AppTheme.neutral300,
+                                          color: Theme.of(context).colorScheme.outlineVariant,
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
                                           'No places found',
                                           style: TextStyle(
-                                            color: AppTheme.neutral600,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -289,10 +290,10 @@ class _HomePageState extends State<HomePage> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             border: Border(
               top: BorderSide(
-                color: AppTheme.neutral200,
+                color: Theme.of(context).colorScheme.outlineVariant,
                 width: 1,
               ),
             ),
@@ -300,13 +301,18 @@ class _HomePageState extends State<HomePage> {
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: (index) {
-              setState(() => _selectedIndex = index);
+              if (index == 2) {
+                // Settings tab
+                context.push('/settings');
+              } else {
+                setState(() => _selectedIndex = index);
+              }
             },
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             elevation: 0,
-            selectedItemColor: AppTheme.primary,
-            unselectedItemColor: AppTheme.neutral500,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
             selectedFontSize: 12,
             unselectedFontSize: 12,
             items: const [
