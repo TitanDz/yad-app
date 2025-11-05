@@ -306,10 +306,10 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisSpacing: 12,
                 childAspectRatio: 3,
                 children: [
-                  _buildSocialButton('Google', () {}, _isLoading),
-                  _buildSocialButton('Apple', () {}, _isLoading),
-                  _buildSocialButton('Phone', () {}, _isLoading),
-                  _buildSocialButton('Sign Up', () {}, _isLoading),
+                  _buildSocialButton('Google', Icons.g_mobiledata, () {}, _isLoading),
+                  _buildSocialButton('Apple', Icons.apple, () {}, _isLoading),
+                  _buildSocialButton('Phone', Icons.phone_in_talk, () {}, _isLoading),
+                  _buildSocialButton('Sign Up', Icons.person_add, () {}, _isLoading),
                 ],
               ),
             ],
@@ -319,8 +319,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildSocialButton(String label, VoidCallback onPressed, bool isLoading) {
-    return OutlinedButton(
+  Widget _buildSocialButton(String label, IconData icon, VoidCallback onPressed, bool isLoading) {
+    return OutlinedButton.icon(
       onPressed: isLoading ? null : onPressed,
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: AppTheme.neutral300),
@@ -329,7 +329,12 @@ class _LoginPageState extends State<LoginPage> {
         ),
         disabledForegroundColor: AppTheme.neutral400,
       ),
-      child: Text(
+      icon: Icon(
+        icon,
+        size: 18,
+        color: isLoading ? AppTheme.neutral400 : AppTheme.neutral900,
+      ),
+      label: Text(
         label,
         style: TextStyle(
           fontSize: 14,

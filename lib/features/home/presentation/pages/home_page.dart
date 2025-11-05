@@ -56,6 +56,103 @@ class _HomePageState extends State<HomePage> {
     _mapController = controller;
   }
 
+  String _getDarkMapStyle() {
+    return '''[
+        {
+          "elementType": "geometry",
+          "stylers": [{"color": "#1a1815"}]
+        },
+        {
+          "elementType": "labels.text",
+          "stylers": [{"color": "#ffffff"}]
+        },
+        {
+          "elementType": "labels.text.stroke",
+          "stylers": [{"color": "#1a1815"}]
+        },
+        {
+          "featureType": "administrative",
+          "elementType": "geometry.stroke",
+          "stylers": [{"color": "#3a3530"}]
+        },
+        {
+          "featureType": "administrative.land_parcel",
+          "elementType": "labels.text",
+          "stylers": [{"color": "#bdbdbd"}]
+        },
+        {
+          "featureType": "poi",
+          "elementType": "geometry",
+          "stylers": [{"color": "#2a2520"}]
+        },
+        {
+          "featureType": "poi",
+          "elementType": "labels.text",
+          "stylers": [{"color": "#d59563"}]
+        },
+        {
+          "featureType": "poi.park",
+          "elementType": "geometry",
+          "stylers": [{"color": "#263c3f"}]
+        },
+        {
+          "featureType": "poi.park",
+          "elementType": "labels.text",
+          "stylers": [{"color": "#6b9080"}]
+        },
+        {
+          "featureType": "road",
+          "elementType": "geometry",
+          "stylers": [{"color": "#38414e"}]
+        },
+        {
+          "featureType": "road",
+          "elementType": "geometry.stroke",
+          "stylers": [{"color": "#212a37"}]
+        },
+        {
+          "featureType": "road",
+          "elementType": "labels.text",
+          "stylers": [{"color": "#9ca5b3"}]
+        },
+        {
+          "featureType": "road.highway",
+          "elementType": "geometry",
+          "stylers": [{"color": "#746855"}]
+        },
+        {
+          "featureType": "road.highway",
+          "elementType": "geometry.stroke",
+          "stylers": [{"color": "#1f2835"}]
+        },
+        {
+          "featureType": "road.highway",
+          "elementType": "labels.text",
+          "stylers": [{"color": "#f3751ff"}]
+        },
+        {
+          "featureType": "transit",
+          "elementType": "geometry",
+          "stylers": [{"color": "#2f3948"}]
+        },
+        {
+          "featureType": "transit.station",
+          "elementType": "labels.text",
+          "stylers": [{"color": "#d59563"}]
+        },
+        {
+          "featureType": "water",
+          "elementType": "geometry",
+          "stylers": [{"color": "#17263c"}]
+        },
+        {
+          "featureType": "water",
+          "elementType": "labels.text",
+          "stylers": [{"color": "#515c6d"}]
+        }
+      ]''';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,6 +249,9 @@ class _HomePageState extends State<HomePage> {
                         myLocationEnabled: false,
                         myLocationButtonEnabled: false,
                         zoomControlsEnabled: false,
+                        style: Theme.of(context).brightness == Brightness.dark
+                            ? _getDarkMapStyle()
+                            : null,
                       );
                     }
 

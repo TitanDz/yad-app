@@ -10,6 +10,7 @@ import 'package:yad_app/features/auth/presentation/pages/otp_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/register_page.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/pages/home_page.dart';
+import 'package:yad_app/features/home/presentation/pages/create_minyan_page.dart';
 import 'package:yad_app/features/settings/data/datasources/settings_datasource.dart';
 import 'package:yad_app/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:yad_app/features/settings/presentation/pages/initial_setup_page.dart';
@@ -38,6 +39,7 @@ class AppRouter {
   static const String reportProblem = '/report-problem';
   static const String helpCenter = '/help-center';
   static const String about = '/about';
+  static const String createMinyan = '/create-minyan';
 
   static final GoRouter router = GoRouter(
     initialLocation: login,
@@ -128,6 +130,10 @@ class AppRouter {
       GoRoute(
         path: about,
         builder: (context, state) => const AboutPage(),
+      ),
+      GoRoute(
+        path: createMinyan,
+        builder: (context, state) => const CreateMinyanPage(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

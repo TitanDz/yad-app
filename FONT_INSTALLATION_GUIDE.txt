@@ -1,0 +1,90 @@
+FONT INSTALLATION GUIDE FOR YAD-YAD APP
+=====================================
+
+The Yad-Yad app is configured to use two custom fonts:
+1. Urbanist (for headings)
+2. Sofia Pro Soft (for body text)
+
+REQUIRED FONT FILES
+===================
+
+Place the following font files in the assets/fonts/ directory:
+
+URBANIST FONTS:
+- Urbanist-Regular.ttf (fontWeight: normal)
+- Urbanist-SemiBold.ttf (fontWeight: 600)
+- Urbanist-Bold.ttf (fontWeight: 700)
+
+SOFIA PRO SOFT FONTS:
+- SofiaProSoft-Regular.ttf (fontWeight: normal)
+- SofiaProSoft-SemiBold.ttf (fontWeight: 600)
+
+DIRECTORY STRUCTURE
+===================
+
+yad-app/
+├── assets/
+│   └── fonts/
+│       ├── Urbanist-Regular.ttf
+│       ├── Urbanist-SemiBold.ttf
+│       ├── Urbanist-Bold.ttf
+│       ├── SofiaProSoft-Regular.ttf
+│       └── SofiaProSoft-SemiBold.ttf
+└── ...
+
+HOW TO OBTAIN THE FONTS
+=======================
+
+Option 1: Google Fonts (Free)
+- Visit https://fonts.google.com
+- Search for "Urbanist" - Download all weight variants
+- Search for "Sofia Pro" - Download the available variants
+- Extract .ttf files from downloaded zip
+
+Option 2: Font Websites
+- Urbanist: Check fontshare.com, fonts.adobe.com, or other font sites
+- Sofia Pro Soft: Available from various font distributors
+- Some fonts may require purchase/licensing
+
+Option 3: Designer/Client Resources
+- Ask your design team for the font files
+- Usually provided in a fonts folder
+
+INSTALLATION STEPS
+==================
+
+1. Download the font files (5 files total)
+
+2. Copy them to: yad-app/assets/fonts/
+   
+3. Verify the files exist:
+   cd yad-app
+   ls -la assets/fonts/
+
+4. Run: flutter pub get
+
+5. Run: flutter clean
+
+6. Run: flutter run
+
+CONFIGURATION STATUS
+====================
+
+✓ pubspec.yaml - Already configured with font declarations
+✓ theme.dart - Already configured to use fonts
+✓ assets/fonts/ directory - Already created and ready
+
+Once you add the font files, everything will work automatically!
+
+TROUBLESHOOTING
+===============
+
+If you get "Error: unable to locate asset entry in pubspec.yaml":
+- Make sure the .ttf files are in the correct location
+- Check that filenames match exactly (case-sensitive)
+- Run: flutter clean && flutter pub get
+
+If fonts don't appear after rebuilding:
+- Verify file paths match pubspec.yaml declarations
+- Try restarting the emulator/device
+- Check that fonts are valid .ttf or .otf files
