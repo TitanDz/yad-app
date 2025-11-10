@@ -1,23 +1,60 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Brand Colors from Design System
-  static const Color divinity = Color(0xFF4D61DE);      // Primary blue
-  static const Color celestial = Color(0xFFC9DDFC);    // Light blue accent
-  static const Color purity = Color(0xFFFAF6F2);       // Off-white
-  static const Color discipline = Color(0xFF292621);   // Dark charcoal
+  // === BRAND COLORS - DESIGN SYSTEM ===
+  // Divinity: Primary action color - confident, professional blue
+  static const Color divinity = Color(0xFF4D41DE);       // Primary blue
+  
+  // Celestial: Secondary accent - light, approachable blue
+  static const Color celestial = Color(0xFFC9DDFC);     // Light blue accent
+  
+  // Purity: Light mode primary surface - clean, minimal
+  static const Color purity = Color(0xFFFAF8F2);        // Light pearl gray
+  
+  // Discipline: Dark mode primary surface - sophisticated, professional
+  static const Color discipline = Color(0xFF292621);    // Dark charcoal
 
-  // Legacy colors (maintained for compatibility)
+  // === SEMANTIC COLORS ===
   static const Color primary = divinity;
   static const Color primaryLight = celestial;
-  static const Color primaryDark = Color(0xFF3A47B5);
-
-  static const Color secondary = Color(0xFF10B981);
-  static const Color error = Color(0xFFEF4444);
-  static const Color warning = Color(0xFFF59E0B);
+  static const Color primaryDark = Color(0xFF3A2FBD);   // Deeper divinity
+  
+  // Success, warning, error states
   static const Color success = Color(0xFF10B981);
-
-  // Neutral palette (dark mode reference: discipline #292621)
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
+  
+  // Accent and secondary colors
+  static const Color secondary = Color(0xFF10B981);
+  static const Color accentLight = celestial;           // Same as celestial for consistency
+  
+  // === LIGHT MODE PALETTE ===
+  // Surface backgrounds with subtle gradation
+  static const Color lightSurface = purity;             // #FAF8F2 - primary background
+  static const Color lightSurfaceVariant = Color(0xFFF5F3ED);  // Slightly darker variant
+  static const Color lightContainer = Color(0xFFEFEDE7);       // Container background
+  static const Color lightContainerHigh = Color(0xFFE8E6E0);   // Elevated container
+  
+  // Text and semantic light mode colors
+  static const Color lightText = Color(0xFF1A1815);     // Almost black for high contrast
+  static const Color lightTextSecondary = Color(0xFF6B6560);  // Medium gray
+  static const Color lightBorder = Color(0xFFDDDAD3);   // Subtle border
+  static const Color lightDivider = Color(0xFFE8E6E0);  // Light divider
+  
+  // === DARK MODE PALETTE ===
+  // Surface backgrounds for dark mode
+  static const Color darkSurface = discipline;          // #292621 - primary background
+  static const Color darkSurfaceVariant = Color(0xFF3A3530); // Slightly lighter variant
+  static const Color darkContainer = Color(0xFF403A35);      // Container background
+  static const Color darkContainerHigh = Color(0xFF4A4440);  // Elevated container
+  
+  // Text and semantic dark mode colors
+  static const Color darkText = Color(0xFFFAF8F2);      // Purity for high contrast
+  static const Color darkTextSecondary = Color(0xFFC8C3BC); // Light gray
+  static const Color darkBorder = Color(0xFF544E47);    // Subtle dark border
+  static const Color darkDivider = Color(0xFF3A3530);   // Dark divider
+  
+  // === LEGACY NEUTRAL PALETTE (for compatibility) ===
   static const Color neutral900 = Color(0xFF1A1815);    // Aligned with discipline
   static const Color neutral800 = Color(0xFF2A2520);
   static const Color neutral700 = Color(0xFF3A3530);
@@ -34,29 +71,67 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
-        primary: primary,
-        secondary: secondary,
+        primary: primary,                              // Divinity blue
+        onPrimary: Colors.white,                       // White text on primary
+        primaryContainer: primaryLight,                // Celestial light blue
+        onPrimaryContainer: primary,                   // Dark blue text on light blue
+        secondary: secondary,                          // Green
+        onSecondary: Colors.white,
+        secondaryContainer: Color(0xFFD1FAE5),        // Very light green
+        onSecondaryContainer: secondary,
         error: error,
-        surface: neutral50,
-        surfaceContainerHighest: neutral100,
+        onError: Colors.white,
+        surface: lightSurface,                         // Purity background
+        onSurface: lightText,                          // Dark text
+        outline: lightBorder,                          // Border color
+        outlineVariant: lightDivider,                  // Divider color
+        surfaceContainerHighest: lightContainerHigh,   // Elevated containers
       ),
+      scaffoldBackgroundColor: lightSurface,           // Overall background
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: neutral900,
+        backgroundColor: lightSurface,                 // Purity background
+        foregroundColor: lightText,                    // Dark text
         elevation: 0,
         centerTitle: true,
+        scrolledUnderElevation: 0,
       ),
-      textTheme: _textTheme(neutral900),
+      textTheme: _textTheme(lightText),
       inputDecorationTheme: _inputDecorationThemeLightMode(),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
+          backgroundColor: primary,                     // Divinity blue
+          foregroundColor: Colors.white,               // White text
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primary,
+          side: const BorderSide(color: primary, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,                           // White cards
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: lightDivider, width: 1),
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: lightSurface,
+        selectedItemColor: primary,
+        unselectedItemColor: lightTextSecondary,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
       ),
     );
   }
@@ -66,29 +141,67 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: ColorScheme.dark(
-        primary: primary,
-        secondary: secondary,
+        primary: primaryLight,                          // Use Celestial for dark mode
+        onPrimary: discipline,                          // Dark text on light blue
+        primaryContainer: primaryDark,                  // Darker blue
+        onPrimaryContainer: Colors.white,              // White text on dark blue
+        secondary: secondary,                          // Green
+        onSecondary: Colors.white,
+        secondaryContainer: Color(0xFF065F46),        // Deep green
+        onSecondaryContainer: Color(0xFFD1FAE5),      // Light green text
         error: error,
-        surface: neutral900,
-        surfaceContainerHighest: neutral800,
+        onError: Colors.white,
+        surface: darkSurface,                          // Discipline background
+        onSurface: darkText,                           // Purity text
+        outline: darkBorder,                           // Border color
+        outlineVariant: darkDivider,                   // Divider color
+        surfaceContainerHighest: darkContainerHigh,    // Elevated containers
       ),
+      scaffoldBackgroundColor: darkSurface,            // Overall background
       appBarTheme: const AppBarTheme(
-        backgroundColor: neutral900,
-        foregroundColor: Colors.white,
+        backgroundColor: darkSurface,                  // Discipline background
+        foregroundColor: darkText,                     // Purity text
         elevation: 0,
         centerTitle: true,
+        scrolledUnderElevation: 0,
       ),
-      textTheme: _textTheme(Colors.white),
+      textTheme: _textTheme(darkText),
       inputDecorationTheme: _inputDecorationThemeDarkMode(),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
+          backgroundColor: primaryLight,                // Celestial light blue
+          foregroundColor: discipline,                  // Dark text
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 4,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryLight,
+          side: const BorderSide(color: celestial, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
+      ),
+      cardTheme: CardThemeData(
+        color: darkContainer,                          // Elevated dark container
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: darkBorder, width: 1),
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: darkSurface,
+        selectedItemColor: celestial,                  // Light blue for selection
+        unselectedItemColor: darkTextSecondary,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
       ),
     );
   }
@@ -156,60 +269,74 @@ class AppTheme {
   static InputDecorationTheme _inputDecorationThemeLightMode() {
     return InputDecorationTheme(
       filled: true,
-      fillColor: neutral100,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      fillColor: lightContainer,                        // Light container background
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: neutral300),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: lightBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: neutral300),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: lightBorder, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primary, width: 2),
       ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: lightDivider),
+      ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: error),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: error, width: 2),
       ),
-      hintStyle: TextStyle(color: neutral500),
-      errorStyle: const TextStyle(color: error),
+      hintStyle: TextStyle(color: lightTextSecondary, fontSize: 14),
+      labelStyle: TextStyle(color: lightText, fontWeight: FontWeight.w500),
+      errorStyle: const TextStyle(color: error, fontSize: 12),
+      prefixIconColor: lightTextSecondary,
+      suffixIconColor: lightTextSecondary,
     );
   }
 
   static InputDecorationTheme _inputDecorationThemeDarkMode() {
     return InputDecorationTheme(
       filled: true,
-      fillColor: neutral800,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      fillColor: darkContainer,                         // Dark container background
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: neutral600),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: darkBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: neutral600, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: darkBorder, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: primary, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: celestial, width: 2),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: darkDivider),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: error),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: error, width: 2),
       ),
-      hintStyle: TextStyle(color: neutral400),
-      errorStyle: const TextStyle(color: error),
+      hintStyle: TextStyle(color: darkTextSecondary, fontSize: 14),
+      labelStyle: TextStyle(color: darkText, fontWeight: FontWeight.w500),
+      errorStyle: const TextStyle(color: error, fontSize: 12),
+      prefixIconColor: darkTextSecondary,
+      suffixIconColor: darkTextSecondary,
     );
   }
 

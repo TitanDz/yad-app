@@ -67,15 +67,11 @@ class _LoginPageState extends State<LoginPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppTheme.neutral900,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.help_outline,
-              color: AppTheme.neutral900,
-            ),
+            icon: const Icon(Icons.help_outline),
             onPressed: () {},
           ),
         ],
@@ -86,7 +82,6 @@ class _LoginPageState extends State<LoginPage> {
             setState(() => _isLoading = true);
           } else if (state is AuthLoginSuccess) {
             setState(() => _isLoading = false);
-            // Navigate to OTP verification using GoRouter
             context.push('/otp', extra: state.email);
           } else if (state is AuthFailure) {
             setState(() => _isLoading = false);
@@ -106,20 +101,19 @@ class _LoginPageState extends State<LoginPage> {
               // Welcome Section
               const SizedBox(height: 16),
               const Text(
-                'Welcome',
+                'Welcome to Yad-Yad',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.neutral900,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Sign in or create an account to continue',
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppTheme.neutral600,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -139,36 +133,9 @@ class _LoginPageState extends State<LoginPage> {
                   }
                 },
                 decoration: InputDecoration(
-                  hintText: 'Email',
-                  hintStyle: const TextStyle(color: AppTheme.neutral500),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: _emailError != null
-                          ? AppTheme.error
-                          : Colors.transparent,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: _emailError != null
-                          ? AppTheme.error
-                          : Colors.transparent,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: AppTheme.error, width: 2),
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  hintText: 'Email Address',
                   errorText: _emailError,
-                  errorStyle: const TextStyle(
-                    color: AppTheme.error,
-                    fontSize: 12,
-                  ),
+                  prefixIcon: const Icon(Icons.email_outlined),
                 ),
               ),
               const SizedBox(height: 16),
@@ -188,160 +155,135 @@ class _LoginPageState extends State<LoginPage> {
                 },
                 decoration: InputDecoration(
                   hintText: 'Password',
-                  hintStyle: const TextStyle(color: AppTheme.neutral500),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: _passwordError != null
-                          ? AppTheme.error
-                          : Colors.transparent,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: _passwordError != null
-                          ? AppTheme.error
-                          : Colors.transparent,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: AppTheme.error, width: 2),
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  errorText: _passwordError,
+                  prefixIcon: const Icon(Icons.lock_outlined),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: AppTheme.neutral500,
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
+                      setState(() => _obscurePassword = !_obscurePassword);
                     },
-                  ),
-                  errorText: _passwordError,
-                  errorStyle: const TextStyle(
-                    color: AppTheme.error,
-                    fontSize: 12,
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
 
               // Forgot Password Link
               Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () => context.push('/forgot-password'),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 0),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: _isLoading ? null : () => context.push('/forgot-password'),
+                  child: Text(
                     'Forgot password?',
                     style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Sign In Button
+              ElevatedButton(
+                onPressed: _isLoading ? null : _handleSignIn,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    _isLoading ? 'Signing in...' : 'Sign In',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Sign In Button
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleSignIn,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              // Divider
+              Row(
+                children: [
+                  Expanded(
+                    child: Divider(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                   ),
-                  disabledBackgroundColor: AppTheme.neutral400,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
-                    : const Text(
-                        'Sign In',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'Or continue with',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
                       ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Divider(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 28),
-
-              // Or Continue With
-              const Text(
-                'Or continue with',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.neutral600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // Social Login Buttons
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 3,
+              SizedBox(
+                height: 48,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Google Button
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.g_mobiledata),
+                        label: const Text('Google'),
+                        onPressed: _isLoading ? null : () {},
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Apple Button
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.apple),
+                        label: const Text('Apple'),
+                        onPressed: _isLoading ? null : () {},
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Sign Up Link
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildSocialButton('Google', Icons.g_mobiledata, () {}, _isLoading),
-                  _buildSocialButton('Apple', Icons.apple, () {}, _isLoading),
-                  _buildSocialButton('Phone', Icons.phone_in_talk, () {}, _isLoading),
-                  _buildSocialButton('Sign Up', Icons.person_add, () {}, _isLoading),
+                  Text(
+                    "Don't have an account? ",
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _isLoading ? null : () {},
+                    child: Text(
+                      'Sign Up',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton(String label, IconData icon, VoidCallback onPressed, bool isLoading) {
-    return OutlinedButton.icon(
-      onPressed: isLoading ? null : onPressed,
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: AppTheme.neutral300),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        disabledForegroundColor: AppTheme.neutral400,
-      ),
-      icon: Icon(
-        icon,
-        size: 18,
-        color: isLoading ? AppTheme.neutral400 : AppTheme.neutral900,
-      ),
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: isLoading ? AppTheme.neutral400 : AppTheme.neutral900,
         ),
       ),
     );
