@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:yad_app/features/home/data/repositories/minyan_repository.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
 
 // Events
@@ -171,11 +172,11 @@ class MinyanActionSuccess extends MinyanState {
 
 // BLoC
 class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
-  // Mock data storage
-  final List<Minyan> _myMinyans = [];
-  final List<Minyan> _nearbyMinyans = [];
+  final MinyanRepository _minyanRepository;
 
-  MinyanBloc() : super(const MinyanInitial()) {
+  MinyanBloc({required MinyanRepository minyanRepository})
+      : _minyanRepository = minyanRepository,
+        super(const MinyanInitial()) {
     on<LoadMyMinyansEvent>(_onLoadMyMinyans);
     on<LoadNearbyMinyansEvent>(_onLoadNearbyMinyans);
     on<FilterMinyansEvent>(_onFilterMinyans);
@@ -192,17 +193,9 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
   ) async {
     emit(const MinyanLoading(isMyMinyans: true));
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Initialize with mock data if empty
-      if (_myMinyans.isEmpty) {
-        _initializeMockMyMinyans();
-      }
-
-      // Only show published minyans
-      final published = _myMinyans.where((m) => m.status == 'published').toList();
-
-      emit(MyMinyanLoaded(minyans: published));
+      // Load my minyans from repository
+      final minyans = await _minyanRepository.getMyMinyans();
+      emit(MyMinyanLoaded(minyans: minyans));
     } catch (e) {
       emit(MinyanError('Failed to load minyans: ${e.toString()}'));
     }
@@ -214,27 +207,13 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
   ) async {
     emit(const MinyanLoading(isMyMinyans: false));
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Initialize with mock data if empty
-      if (_nearbyMinyans.isEmpty) {
-        _initializeMockNearbyMinyans();
-      }
-
-      // Filter by distance if provided
-      final filtered = event.latitude != null && event.longitude != null
-          ? _filterByDistance(
-              _nearbyMinyans,
-              event.latitude!,
-              event.longitude!,
-              event.radiusKm,
-            )
-          : _nearbyMinyans;
-
-      // Sort by distance
-      filtered.sort((a, b) => (a.distance ?? 0).compareTo(b.distance ?? 0));
-
-      emit(NearbyMinyanLoaded(minyans: filtered));
+      // Load nearby minyans from repository
+      final minyans = await _minyanRepository.getNearbyMinyans(
+        latitude: event.latitude ?? 40.7128,
+        longitude: event.longitude ?? -74.0060,
+        radiusKm: event.radiusKm,
+      );
+      emit(NearbyMinyanLoaded(minyans: minyans));
     } catch (e) {
       emit(MinyanError('Failed to load nearby minyans: ${e.toString()}'));
     }
@@ -245,10 +224,10 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     Emitter<MinyanState> emit,
   ) async {
     try {
-      if (event.isMyMinyans) {
-        // My Minyans filtering
-        final published = _myMinyans.where((m) => m.status == 'published').toList();
-        var filtered = List<Minyan>.from(published);
+      if (event.isMyMinyans && state is MyMinyanLoaded) {
+        // Load fresh data with filters
+        final minyans = await _minyanRepository.getMyMinyans();
+        var filtered = List<Minyan>.from(minyans);
 
         // Filter by prayer type
         if (event.prayerType != null) {
@@ -260,7 +239,7 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
           filtered = filtered.where((m) => m.date == event.filterByDate).toList();
         }
 
-        // Filter by distance (using user's location)
+        // Filter by distance
         if (event.maxDistance != null) {
           const userLat = 40.7128;
           const userLon = -74.0060;
@@ -277,8 +256,8 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
           filterByDate: event.filterByDate,
           maxDistance: event.maxDistance,
         ));
-      } else if (state is NearbyMinyanLoaded) {
-        // Nearby Minyans filtering
+      } else if (!event.isMyMinyans && state is NearbyMinyanLoaded) {
+        // Filter nearby minyans
         final current = state as NearbyMinyanLoaded;
         var filtered = event.prayerType != null
             ? current.minyans
@@ -309,33 +288,12 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     Emitter<MinyanState> emit,
   ) async {
     try {
-      final index = _nearbyMinyans.indexWhere((m) => m.id == event.minyanId);
-      if (index != -1) {
-        final minyan = _nearbyMinyans[index];
-        _nearbyMinyans[index] = Minyan(
-          id: minyan.id,
-          userId: minyan.userId,
-          prayerType: minyan.prayerType,
-          date: minyan.date,
-          time: minyan.time,
-          locationName: minyan.locationName,
-          latitude: minyan.latitude,
-          longitude: minyan.longitude,
-          notes: minyan.notes,
-          status: minyan.status,
-          participantCount: minyan.participantCount + 1,
-          createdAt: minyan.createdAt,
-          updatedAt: minyan.updatedAt,
-          distance: minyan.distance,
-        );
-
-        emit(MinyanActionSuccess(
-          message: 'Successfully joined minyan',
-          action: 'joined',
-        ));
-
-        add(const LoadNearbyMinyansEvent());
-      }
+      await _minyanRepository.joinMinyan(event.minyanId);
+      emit(MinyanActionSuccess(
+        message: 'Successfully joined minyan',
+        action: 'joined',
+      ));
+      add(const LoadNearbyMinyansEvent());
     } catch (e) {
       emit(MinyanError('Failed to join minyan: ${e.toString()}'));
     }
@@ -346,35 +304,12 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     Emitter<MinyanState> emit,
   ) async {
     try {
-      final index = _nearbyMinyans.indexWhere((m) => m.id == event.minyanId);
-      if (index != -1) {
-        final minyan = _nearbyMinyans[index];
-        if (minyan.participantCount > 1) {
-          _nearbyMinyans[index] = Minyan(
-            id: minyan.id,
-            userId: minyan.userId,
-            prayerType: minyan.prayerType,
-            date: minyan.date,
-            time: minyan.time,
-            locationName: minyan.locationName,
-            latitude: minyan.latitude,
-            longitude: minyan.longitude,
-            notes: minyan.notes,
-            status: minyan.status,
-            participantCount: minyan.participantCount - 1,
-            createdAt: minyan.createdAt,
-            updatedAt: minyan.updatedAt,
-            distance: minyan.distance,
-          );
-        }
-
-        emit(MinyanActionSuccess(
-          message: 'Left minyan',
-          action: 'left',
-        ));
-
-        add(const LoadNearbyMinyansEvent());
-      }
+      await _minyanRepository.leaveMinyan(event.minyanId);
+      emit(MinyanActionSuccess(
+        message: 'Left minyan',
+        action: 'left',
+      ));
+      add(const LoadNearbyMinyansEvent());
     } catch (e) {
       emit(MinyanError('Failed to leave minyan: ${e.toString()}'));
     }
@@ -385,13 +320,11 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     Emitter<MinyanState> emit,
   ) async {
     try {
-      _myMinyans.removeWhere((m) => m.id == event.minyanId);
-
+      await _minyanRepository.deleteMinyan(event.minyanId);
       emit(MinyanActionSuccess(
         message: 'Minyan deleted',
         action: 'deleted',
       ));
-
       add(const LoadMyMinyansEvent());
     } catch (e) {
       emit(MinyanError('Failed to delete minyan: ${e.toString()}'));
@@ -403,37 +336,12 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     Emitter<MinyanState> emit,
   ) async {
     try {
-      final index = _myMinyans.indexWhere((m) => m.id == event.minyanId);
-      if (index != -1) {
-        final minyan = _myMinyans[index];
-        _myMinyans[index] = Minyan(
-          id: minyan.id,
-          userId: minyan.userId,
-          prayerType: minyan.prayerType,
-          date: minyan.date,
-          time: minyan.time,
-          locationName: minyan.locationName,
-          latitude: minyan.latitude,
-          longitude: minyan.longitude,
-          notes: minyan.notes,
-          status: 'published',
-          participantCount: minyan.participantCount,
-          createdAt: minyan.createdAt,
-          updatedAt: DateTime.now(),
-        );
-
-        // Add to nearby minyans as well
-        if (!_nearbyMinyans.any((m) => m.id == minyan.id)) {
-          _nearbyMinyans.add(_myMinyans[index]);
-        }
-
-        emit(MinyanActionSuccess(
-          message: 'Minyan published',
-          action: 'published',
-        ));
-
-        add(const LoadMyMinyansEvent());
-      }
+      await _minyanRepository.publishMinyan(event.minyanId);
+      emit(MinyanActionSuccess(
+        message: 'Minyan published',
+        action: 'published',
+      ));
+      add(const LoadMyMinyansEvent());
     } catch (e) {
       emit(MinyanError('Failed to publish minyan: ${e.toString()}'));
     }
@@ -448,113 +356,6 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     } else {
       add(const LoadNearbyMinyansEvent());
     }
-  }
-
-  void _initializeMockMyMinyans() {
-    _myMinyans.addAll([
-      Minyan(
-        id: '1',
-        userId: 'user123',
-        prayerType: 'Shacharit',
-        date: '2024-12-15',
-        time: '06:30',
-        locationName: 'Central Synagogue',
-        latitude: 40.7128,
-        longitude: -74.0060,
-        notes: 'Morning prayers with breakfast',
-        status: 'draft',
-        participantCount: 1,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        isCreatedByUser: true,
-      ),
-      Minyan(
-        id: '2',
-        userId: 'user123',
-        prayerType: 'Mincha',
-        date: '2024-12-16',
-        time: '13:30',
-        locationName: 'Park Avenue Shul',
-        latitude: 40.7250,
-        longitude: -73.9850,
-        notes: 'Afternoon service',
-        status: 'published',
-        participantCount: 3,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        isCreatedByUser: true,
-      ),
-    ]);
-  }
-
-  void _initializeMockNearbyMinyans() {
-    _nearbyMinyans.addAll([
-      Minyan(
-        id: '3',
-        userId: 'user456',
-        prayerType: 'Shacharit',
-        date: '2024-12-15',
-        time: '06:45',
-        locationName: 'Midtown Synagogue',
-        latitude: 40.7500,
-        longitude: -73.9800,
-        notes: '',
-        status: 'published',
-        participantCount: 4,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        distance: 3.2,
-      ),
-      Minyan(
-        id: '4',
-        userId: 'user789',
-        prayerType: 'Maariv',
-        date: '2024-12-15',
-        time: '18:00',
-        locationName: 'Upper West Side Temple',
-        latitude: 40.7800,
-        longitude: -73.9900,
-        notes: 'Evening prayers',
-        status: 'published',
-        participantCount: 6,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        distance: 5.1,
-      ),
-      Minyan(
-        id: '5',
-        userId: 'user101',
-        prayerType: 'Mincha',
-        date: '2024-12-16',
-        time: '14:00',
-        locationName: 'Riverside Congregation',
-        latitude: 40.7900,
-        longitude: -74.0100,
-        notes: 'Community afternoon service',
-        status: 'published',
-        participantCount: 5,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        distance: 7.3,
-      ),
-    ]);
-  }
-
-  List<Minyan> _filterByDistance(
-    List<Minyan> minyans,
-    double latitude,
-    double longitude,
-    double radiusKm,
-  ) {
-    return minyans.where((minyan) {
-      final distance = _calculateDistance(
-        latitude,
-        longitude,
-        minyan.latitude,
-        minyan.longitude,
-      );
-      return distance <= radiusKm;
-    }).toList();
   }
 
   double _calculateDistance(

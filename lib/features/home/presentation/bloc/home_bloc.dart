@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:yad_app/features/home/data/datasources/location_service.dart';
-import 'package:yad_app/features/home/data/datasources/places_service.dart';
+import 'package:yad_app/features/home/data/repositories/place_repository.dart';
 import 'package:yad_app/features/home/domain/entities/place.dart';
 import 'package:yad_app/features/home/domain/entities/user_location.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
@@ -159,13 +159,13 @@ class HomeError extends HomeState {
 // Bloc
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final LocationService _locationService;
-  final PlacesService _placesService;
+  final PlaceRepository _placeRepository;
 
   HomeBloc({
     LocationService? locationService,
-    PlacesService? placesService,
+    required PlaceRepository placeRepository,
   })  : _locationService = locationService ?? LocationService(),
-        _placesService = placesService ?? PlacesService(),
+        _placeRepository = placeRepository,
         super(const HomeInitial()) {
     on<InitializeMapEvent>(_onInitializeMap);
     on<SearchPlacesEvent>(_onSearchPlaces);
@@ -186,17 +186,14 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       final userLocation = await _locationService.getCurrentLocation();
 
-      // Load prayer locations and markers
-      final synagogues = await _placesService.getNearbyJewishVenues(
-        latitude: userLocation?.latitude ?? 40.7128,
-        longitude: userLocation?.longitude ?? -74.0060,
-      );
+      // Load saved places from repository
+      final savedPlaces = await _placeRepository.getSavedPlaces(limit: 50);
 
-      // Create markers for synagogues (using violet color)
-      final synagogueMarkers = synagogues.asMap().entries.map((entry) {
+      // Create markers for saved places (using violet color)
+      final placeMarkers = savedPlaces.asMap().entries.map((entry) {
         final place = entry.value;
         return Marker(
-          markerId: MarkerId('synagogue_${place.id}'),
+          markerId: MarkerId('place_${place.id}'),
           position: LatLng(place.latitude, place.longitude),
           infoWindow: InfoWindow(
             title: place.name,
@@ -210,14 +207,14 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
       // Add current location marker
       final updatedMarkers = _addCurrentLocationMarker(
-        synagogueMarkers,
+        placeMarkers,
         userLocation,
       );
 
       emit(HomeMapReady(
         userLocation: userLocation,
         markers: updatedMarkers,
-        synagogues: synagogues,
+        synagogues: savedPlaces,
       ));
     } catch (e) {
       emit(HomeError('Failed to initialize map: ${e.toString()}'));
@@ -233,11 +230,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final currentState = state as HomeMapReady;
 
     try {
-      final results = await _placesService.searchPlaces(
-        event.query,
-        latitude: currentState.userLocation?.latitude,
-        longitude: currentState.userLocation?.longitude,
-        jewishVenuesOnly: event.jewishVenuesOnly,
+      final results = await _placeRepository.searchPlaces(
+        query: event.query,
       );
 
       final newMarkers = _createMarkersFromPlaces(results);
@@ -266,15 +260,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final currentState = state as HomeMapReady;
 
     try {
-      if (currentState.userLocation == null) {
-        emit(HomeError('Location required to load nearby Jewish venues'));
-        return;
-      }
-
-      final results = await _placesService.getNearbyJewishVenues(
-        latitude: currentState.userLocation!.latitude,
-        longitude: currentState.userLocation!.longitude,
-      );
+      final results = await _placeRepository.getSavedPlaces(limit: 50);
 
       final newMarkers = _createMarkersFromPlaces(results);
 
@@ -435,17 +421,14 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final currentState = state as HomeMapReady;
 
     try {
-      // Load nearby Jewish synagogues
-      final synagogues = await _placesService.getNearbyJewishVenues(
-        latitude: currentState.userLocation?.latitude ?? 40.7128,
-        longitude: currentState.userLocation?.longitude ?? -74.0060,
-      );
+      // Load nearby saved places
+      final savedPlaces = await _placeRepository.getSavedPlaces(limit: 50);
 
-      // Create markers for synagogues (using purple pins)
-      final synagogueMarkers = synagogues.asMap().entries.map((entry) {
+      // Create markers for places (using purple pins)
+      final placeMarkers = savedPlaces.asMap().entries.map((entry) {
         final place = entry.value;
         return Marker(
-          markerId: MarkerId('synagogue_${place.id}'),
+          markerId: MarkerId('place_${place.id}'),
           position: LatLng(place.latitude, place.longitude),
           infoWindow: InfoWindow(
             title: place.name,
@@ -460,12 +443,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       // Note: Minyanim would be loaded from MinyanBloc in a real scenario
       // For now, we're demonstrating the structure
       final updatedMarkers = _addCurrentLocationMarker(
-        synagogueMarkers,
+        placeMarkers,
         currentState.userLocation,
       );
 
       emit(currentState.copyWith(
-        synagogues: synagogues,
+        synagogues: savedPlaces,
         markers: updatedMarkers,
       ));
     } catch (e) {

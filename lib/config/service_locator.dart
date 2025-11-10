@@ -5,8 +5,14 @@ import 'package:yad_app/features/auth/data/datasources/auth_unified_datasource.d
 import 'package:yad_app/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:yad_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:yad_app/features/home/data/datasources/location_service.dart';
-import 'package:yad_app/features/home/data/datasources/places_service.dart';
+import 'package:yad_app/features/home/data/datasources/minyan_remote_datasource.dart';
+import 'package:yad_app/features/home/data/datasources/minyan_unified_datasource.dart';
+import 'package:yad_app/features/home/data/datasources/place_remote_datasource.dart';
+import 'package:yad_app/features/home/data/datasources/place_unified_datasource.dart';
+import 'package:yad_app/features/home/data/repositories/minyan_repository.dart';
+import 'package:yad_app/features/home/data/repositories/place_repository.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/settings/presentation/bloc/theme_bloc.dart';
 import 'package:yad_app/shared/constants/app_constants.dart';
 
@@ -38,15 +44,33 @@ Future<void> setupServiceLocator() async {
     AuthBloc(repository: getIt<AuthRepository>()),
   );
 
+  // Home datasources and repositories
+  getIt.registerSingleton<MinyanRemoteDataSource>(
+    UnifiedMinyanDataSource(networkService: getIt<NetworkService>()),
+  );
+  getIt.registerSingleton<MinyanRepository>(
+    MinyanRepositoryImpl(getIt<MinyanRemoteDataSource>()),
+  );
+
+  getIt.registerSingleton<PlaceRemoteDataSource>(
+    UnifiedPlaceDataSource(networkService: getIt<NetworkService>()),
+  );
+  getIt.registerSingleton<PlaceRepository>(
+    PlaceRepositoryImpl(getIt<PlaceRemoteDataSource>()),
+  );
+
   // Home services
   getIt.registerSingleton<LocationService>(LocationService());
-  getIt.registerSingleton<PlacesService>(PlacesService());
 
-  // Home bloc
+  // Home blocs
   getIt.registerSingleton<HomeBloc>(
     HomeBloc(
       locationService: getIt<LocationService>(),
-      placesService: getIt<PlacesService>(),
+      placeRepository: getIt<PlaceRepository>(),
     ),
+  );
+
+  getIt.registerSingleton<MinyanBloc>(
+    MinyanBloc(minyanRepository: getIt<MinyanRepository>()),
   );
 }

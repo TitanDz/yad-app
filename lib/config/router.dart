@@ -175,7 +175,7 @@ class AppRouter {
       GoRoute(
         path: minyanim,
         builder: (context, state) => BlocProvider<MinyanBloc>(
-          create: (context) => MinyanBloc(),
+          create: (context) => getIt<MinyanBloc>(),
           child: const MinyanPage(),
         ),
       ),

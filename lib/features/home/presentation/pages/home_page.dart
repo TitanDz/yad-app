@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:yad_app/config/service_locator.dart';
 import 'package:yad_app/config/theme.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
@@ -660,7 +661,7 @@ class _HomePageState extends State<HomePage> {
     } else if (_selectedIndex == 1) {
       // Minyan view
       return BlocProvider<MinyanBloc>(
-        create: (context) => MinyanBloc()..add(const LoadMyMinyansEvent()),
+        create: (context) => getIt<MinyanBloc>()..add(const LoadMyMinyansEvent()),
         child: const MinyanPage(),
       );
     } else if (_selectedIndex == 2) {
