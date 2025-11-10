@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class MinyanData {
   String? prayerType;
@@ -9,6 +13,13 @@ class MinyanData {
   String? locationName;
   double? latitude;
   double? longitude;
+  String? street;
+  String? neighborhood;
+  String? locality;
+  String? administrativeArea;
+  String? postalCode;
+  String? country;
+  String? fullAddress;
 
   MinyanData({
     this.prayerType,
@@ -18,6 +29,13 @@ class MinyanData {
     this.locationName,
     this.latitude,
     this.longitude,
+    this.street,
+    this.neighborhood,
+    this.locality,
+    this.administrativeArea,
+    this.postalCode,
+    this.country,
+    this.fullAddress,
   });
 }
 
@@ -34,6 +52,9 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String _selectedPrayerType = '';
+  late GoogleMapController _mapController;
+  final LatLng _mapCenter = const LatLng(40.7128, -74.0060); // Default to NYC
+  final Set<Marker> _markers = {};
 
   @override
   void initState() {
@@ -45,6 +66,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   void dispose() {
     _notesController.dispose();
     _searchController.dispose();
+    // Don't dispose GoogleMapController - it's managed by the GoogleMap widget
     super.dispose();
   }
 
@@ -326,54 +348,52 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
         Expanded(
           child: Stack(
             children: [
-              // Placeholder for map with tap detection
-              GestureDetector(
-                onTapDown: (details) {
-                  // Simulate map tap to select location
+              // Google Maps
+              GoogleMap(
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                },
+                initialCameraPosition: CameraPosition(
+                  target: _mapCenter,
+                  zoom: 12,
+                ),
+                markers: _markers,
+                onTap: (LatLng latLng) async {
+                  // Add marker to map
+                  final markerId = MarkerId('selected_location');
+                  final marker = Marker(
+                    markerId: markerId,
+                    position: latLng,
+                    infoWindow: const InfoWindow(
+                      title: 'Selected Location',
+                    ),
+                  );
+                  setState(() {
+                    _markers.clear();
+                    _markers.add(marker);
+                  });
+
+                  // Get detailed address from coordinates (reverse geocoding)
+                  final addressDetails = await _getAddressDetails(latLng);
                   _showLocationConfirmDialog(
-                    'Tapped Location',
-                    40.7128,
-                    -74.0060,
-                    'Tapped Location on Map',
+                    addressDetails['name'] ?? 'Unknown Location',
+                    latLng.latitude,
+                    latLng.longitude,
+                    addressDetails['fullAddress'] ?? '${latLng.latitude.toStringAsFixed(4)}, ${latLng.longitude.toStringAsFixed(4)}',
+                    street: addressDetails['street'],
+                    neighborhood: addressDetails['neighborhood'],
+                    locality: addressDetails['locality'],
+                    administrativeArea: addressDetails['administrativeArea'],
+                    postalCode: addressDetails['postalCode'],
+                    country: addressDetails['country'],
                   );
                 },
-                child: Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.map,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Tap on map to select location',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (_minyanData.locationName != null) ...
-                          [
-                            const SizedBox(height: 8),
-                            Text(
-                              _minyanData.locationName!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                      ],
-                    ),
-                  ),
-                ),
+                zoomControlsEnabled: false,
+                myLocationButtonEnabled: false,
+                mapToolbarEnabled: false,
               ),
-              // Search Bar
+              
+              // Search Bar overlay
               Positioned(
                 top: 12,
                 left: 16,
@@ -392,17 +412,13 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                   ),
                   child: TextField(
                     controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {});
+                    },
                     onSubmitted: (value) {
                       if (value.isNotEmpty) {
-                        setState(() {
-                          _minyanData.locationName = value;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Location set to: $value'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
+                        _searchLocation(value);
+                        _searchController.clear();
                       }
                     },
                     decoration: InputDecoration(
@@ -418,6 +434,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                               icon: const Icon(Icons.close),
                               onPressed: () {
                                 _searchController.clear();
+                                setState(() {});
                               },
                             )
                           : null,
@@ -425,12 +442,90 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                   ),
                 ),
               ),
+
+              // Zoom controls (bottom right)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Zoom In button
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).colorScheme.primary,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () async {
+                            _mapController.animateCamera(
+                              CameraUpdate.zoomBy(1),
+                            );
+                          },
+                          customBorder: const CircleBorder(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Zoom Out button
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).colorScheme.primary,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () async {
+                            _mapController.animateCamera(
+                              CameraUpdate.zoomBy(-1),
+                            );
+                          },
+                          customBorder: const CircleBorder(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(
+                              Icons.remove,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
         // Bottom Action Buttons
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             border: Border(
@@ -448,21 +543,20 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                         setState(() => _currentStep = 2);
                       }
                     : null,
-                child: const Text('Set Location'),
+                child: const Text('Continue to Confirm'),
               ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () {},
-                child: const Text('Set Location Privacy'),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildBottomNavIcon(Icons.location_on, 'Map', true),
-                  _buildBottomNavIcon(Icons.notifications, 'Notifications', false),
-                  _buildBottomNavIcon(Icons.settings, 'Settings', false),
-                ],
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Location privacy settings'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                label: const Text('Location Privacy'),
               ),
             ],
           ),
@@ -471,12 +565,296 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
     );
   }
 
+  Future<Map<String, String>> _getAddressDetails(LatLng latLng) async {
+    // Try Google Maps Geocoding API first (most reliable)
+    try {
+      final result = await _getAddressFromGoogleAPI(latLng);
+      if (result != null) {
+        return result;
+      }
+    } catch (e) {
+      debugPrint('Google API geocoding error: $e');
+    }
+
+    // Fallback to native geocoding
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        latLng.latitude,
+        latLng.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        return _parsePlacemark(placemarks.first);
+      }
+    } catch (e) {
+      debugPrint('Native geocoding error: $e');
+    }
+
+    // Fallback to mock addresses
+    return _getMockAddressForLocation(latLng);
+  }
+
+  Future<Map<String, String>?> _getAddressFromGoogleAPI(LatLng latLng) async {
+    try {
+      const apiKey = 'AIzaSyD1_mZtNCy3Rbb-qD4sQQtUKd25VzdF8hI';
+      final url =
+          'https://maps.googleapis.com/maps/api/geocode/json?latlng=${latLng.latitude},${latLng.longitude}&key=$apiKey';
+
+      final response = await http.get(Uri.parse(url)).timeout(
+        const Duration(seconds: 5),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final results = json['results'] as List?;
+
+        if (results != null && results.isNotEmpty) {
+          final result = results.first as Map<String, dynamic>;
+          return _parseGoogleGeocodingResult(result, latLng);
+        }
+      }
+    } catch (e) {
+      debugPrint('Google API error: $e');
+    }
+    return null;
+  }
+
+  Map<String, String> _parseGoogleGeocodingResult(Map<String, dynamic> result, LatLng latLng) {
+    final formattedAddress = result['formatted_address'] as String? ?? '';
+    final addressComponents =
+        result['address_components'] as List<dynamic>? ?? [];
+
+    // Extract components
+    String street = '';
+    String neighborhood = '';
+    String locality = '';
+    String administrativeArea = '';
+    String postalCode = '';
+    String country = '';
+
+    for (final component in addressComponents) {
+      final types = (component['types'] as List<dynamic>?) ?? [];
+      final longName = component['long_name'] as String? ?? '';
+      final shortName = component['short_name'] as String? ?? '';
+
+      if (types.contains('street_number')) {
+        street = '$longName $street';
+      } else if (types.contains('route')) {
+        street = '$street $longName'.trim();
+      } else if (types.contains('neighborhood')) {
+        neighborhood = longName;
+      } else if (types.contains('locality')) {
+        locality = longName;
+      } else if (types.contains('administrative_area_level_1')) {
+        administrativeArea = shortName;
+      } else if (types.contains('postal_code')) {
+        postalCode = longName;
+      } else if (types.contains('country')) {
+        country = longName;
+      }
+    }
+
+    // Build name from available data
+    final name = street.isNotEmpty
+        ? street
+        : neighborhood.isNotEmpty
+            ? neighborhood
+            : locality.isNotEmpty
+                ? locality
+                : 'Selected Location';
+
+    return {
+      'name': name.trim(),
+      'fullAddress': formattedAddress.isNotEmpty
+          ? formattedAddress
+          : '${latLng.latitude.toStringAsFixed(4)}, ${latLng.longitude.toStringAsFixed(4)}',
+      'street': street.trim(),
+      'neighborhood': neighborhood,
+      'locality': locality,
+      'administrativeArea': administrativeArea,
+      'postalCode': postalCode,
+      'country': country,
+    };
+  }
+
+  Map<String, String> _parsePlacemark(Placemark placemark) {
+    final street = placemark.street ?? '';
+    final thoroughfare = placemark.thoroughfare ?? '';
+    final subThoroughfare = placemark.subThoroughfare ?? '';
+    final locality = placemark.locality ?? '';
+    final subLocality = placemark.subLocality ?? '';
+    final administrativeArea = placemark.administrativeArea ?? '';
+    final postalCode = placemark.postalCode ?? '';
+    final country = placemark.country ?? '';
+
+    String name = '';
+    if (street.isNotEmpty) {
+      name = street;
+    } else if (thoroughfare.isNotEmpty) {
+      name = thoroughfare;
+    } else if (locality.isNotEmpty) {
+      name = locality;
+    } else if (subLocality.isNotEmpty) {
+      name = subLocality;
+    } else {
+      name = 'Unknown Location';
+    }
+
+    List<String> addressParts = [];
+    if (subThoroughfare.isNotEmpty) addressParts.add(subThoroughfare);
+    if (street.isNotEmpty) addressParts.add(street);
+    if (subLocality.isNotEmpty) addressParts.add(subLocality);
+    if (locality.isNotEmpty) addressParts.add(locality);
+    if (administrativeArea.isNotEmpty) addressParts.add(administrativeArea);
+    if (postalCode.isNotEmpty) addressParts.add(postalCode);
+    if (country.isNotEmpty) addressParts.add(country);
+
+    final fullAddress = addressParts.join(', ');
+
+    return {
+      'name': name,
+      'fullAddress': fullAddress.isNotEmpty
+          ? fullAddress
+          : 'No address available',
+      'street': street,
+      'neighborhood': subLocality,
+      'locality': locality,
+      'administrativeArea': administrativeArea,
+      'postalCode': postalCode,
+      'country': country,
+    };
+  }
+
+  Map<String, String> _getMockAddressForLocation(LatLng latLng) {
+    // Provide offline mock addresses for common locations
+    // This is a fallback when reverse geocoding is not available
+    final lat = latLng.latitude;
+    final lng = latLng.longitude;
+
+    // Central Park
+    if ((lat - 40.7829).abs() < 0.01 && (lng - (-73.9654)).abs() < 0.01) {
+      return {
+        'name': 'Central Park',
+        'fullAddress': 'Central Park, Manhattan, New York, 10024, United States',
+        'street': '',
+        'neighborhood': 'Midtown',
+        'locality': 'New York',
+        'administrativeArea': 'New York',
+        'postalCode': '10024',
+        'country': 'United States',
+      };
+    }
+
+    // Times Square
+    if ((lat - 40.7580).abs() < 0.01 && (lng - (-73.9855)).abs() < 0.01) {
+      return {
+        'name': 'Times Square',
+        'fullAddress': '1500 Broadway, Times Square, Manhattan, New York, 10036, United States',
+        'street': 'Broadway',
+        'neighborhood': 'Times Square',
+        'locality': 'New York',
+        'administrativeArea': 'New York',
+        'postalCode': '10036',
+        'country': 'United States',
+      };
+    }
+
+    // Statue of Liberty
+    if ((lat - 40.6892).abs() < 0.01 && (lng - (-74.0445)).abs() < 0.01) {
+      return {
+        'name': 'Statue of Liberty',
+        'fullAddress': 'Liberty Island, New York, 10004, United States',
+        'street': '',
+        'neighborhood': 'Lower Manhattan',
+        'locality': 'New York',
+        'administrativeArea': 'New York',
+        'postalCode': '10004',
+        'country': 'United States',
+      };
+    }
+
+    // Default for any other location
+    return {
+      'name': 'Selected Location',
+      'fullAddress': '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+      'street': '',
+      'neighborhood': '',
+      'locality': '',
+      'administrativeArea': '',
+      'postalCode': '',
+      'country': '',
+    };
+  }
+
+  Future<void> _searchLocation(String query) async {
+    // Mock location search
+    // In production, use a geocoding service or Google Places API
+    late LatLng resultLocation;
+    String resultName = query;
+
+    if (query.toLowerCase().contains('central park')) {
+      resultLocation = const LatLng(40.7829, -73.9654);
+      resultName = 'Central Park, New York';
+    } else if (query.toLowerCase().contains('times square')) {
+      resultLocation = const LatLng(40.7580, -73.9855);
+      resultName = 'Times Square, New York';
+    } else if (query.toLowerCase().contains('statue')) {
+      resultLocation = const LatLng(40.6892, -74.0445);
+      resultName = 'Statue of Liberty, New York';
+    } else {
+      // Default search behavior
+      resultLocation = _mapCenter;
+    }
+
+    // Add marker to map
+    final markerId = MarkerId('selected_location');
+    final marker = Marker(
+      markerId: markerId,
+      position: resultLocation,
+      infoWindow: InfoWindow(
+        title: resultName,
+      ),
+    );
+    setState(() {
+      _markers.clear();
+      _markers.add(marker);
+    });
+
+    // Animate camera to location
+    _mapController.animateCamera(
+      CameraUpdate.newLatLng(resultLocation),
+    );
+
+    // Get detailed address
+    final addressDetails = await _getAddressDetails(resultLocation);
+
+    // Show confirmation dialog
+    _showLocationConfirmDialog(
+      addressDetails['name'] ?? resultName,
+      resultLocation.latitude,
+      resultLocation.longitude,
+      addressDetails['fullAddress'] ?? '${resultLocation.latitude.toStringAsFixed(4)}, ${resultLocation.longitude.toStringAsFixed(4)}',
+      street: addressDetails['street'],
+      neighborhood: addressDetails['neighborhood'],
+      locality: addressDetails['locality'],
+      administrativeArea: addressDetails['administrativeArea'],
+      postalCode: addressDetails['postalCode'],
+      country: addressDetails['country'],
+    );
+  }
+
   void _showLocationConfirmDialog(
     String locationName,
     double lat,
     double lng,
-    String address,
-  ) {
+    String address, {
+    String? street,
+    String? neighborhood,
+    String? locality,
+    String? administrativeArea,
+    String? postalCode,
+    String? country,
+  }) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -507,6 +885,13 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                 _minyanData.locationName = locationName;
                 _minyanData.latitude = lat;
                 _minyanData.longitude = lng;
+                _minyanData.street = street ?? '';
+                _minyanData.neighborhood = neighborhood ?? '';
+                _minyanData.locality = locality ?? '';
+                _minyanData.administrativeArea = administrativeArea ?? '';
+                _minyanData.postalCode = postalCode ?? '';
+                _minyanData.country = country ?? '';
+                _minyanData.fullAddress = address;
               });
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -554,10 +939,16 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
           _buildDetailItem(Icons.access_time, 'Time', timeStr),
           const SizedBox(height: 16),
           _buildDetailItem(Icons.location_on, 'Location', locationStr),
+          // Display complete address details if location was selected
+          if (_minyanData.fullAddress != null && _minyanData.fullAddress!.isNotEmpty) ...
+            [
+              const SizedBox(height: 12),
+              _buildAddressDetailsSection(),
+            ],
           const SizedBox(height: 16),
           _buildDetailItem(Icons.note, 'Notes', notesStr),
           const SizedBox(height: 48),
-          // Action Buttons
+          // ... existing code ...
           Row(
             children: [
               Expanded(
@@ -621,6 +1012,83 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddressDetailsSection() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Address Details',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_minyanData.street!.isNotEmpty)
+            _buildAddressField('Street', _minyanData.street!),
+          if (_minyanData.street!.isNotEmpty && _minyanData.neighborhood!.isNotEmpty)
+            const SizedBox(height: 8),
+          if (_minyanData.neighborhood!.isNotEmpty)
+            _buildAddressField('Neighborhood', _minyanData.neighborhood!),
+          if (_minyanData.neighborhood!.isNotEmpty && _minyanData.locality!.isNotEmpty)
+            const SizedBox(height: 8),
+          if (_minyanData.locality!.isNotEmpty)
+            _buildAddressField('City', _minyanData.locality!),
+          if (_minyanData.locality!.isNotEmpty && _minyanData.administrativeArea!.isNotEmpty)
+            const SizedBox(height: 8),
+          if (_minyanData.administrativeArea!.isNotEmpty)
+            _buildAddressField('State', _minyanData.administrativeArea!),
+          if (_minyanData.administrativeArea!.isNotEmpty && _minyanData.postalCode!.isNotEmpty)
+            const SizedBox(height: 8),
+          if (_minyanData.postalCode!.isNotEmpty)
+            _buildAddressField('Postal Code', _minyanData.postalCode!),
+          if (_minyanData.postalCode!.isNotEmpty && _minyanData.country!.isNotEmpty)
+            const SizedBox(height: 8),
+          if (_minyanData.country!.isNotEmpty)
+            _buildAddressField('Country', _minyanData.country!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressField(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
         ),
       ],

@@ -49,8 +49,6 @@
 	<string>This app needs access to your location to show nearby places and provide better search results.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app needs access to your location to show nearby places and provide better search results.</string>
-	<key>NSBonjourServices</key>
-	<array/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Allow Flutter tools on your computer to connect and debug your application. This prompt will not appear on release builds.</string>
 	<key>io.flutter.embedded_views_preview</key>

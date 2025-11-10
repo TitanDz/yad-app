@@ -67,7 +67,7 @@ class MinyanRemoteDataSourceImpl implements MinyanRemoteDataSource {
       final response = await networkService.get<List<dynamic>>(
         '/minyans/my?limit=$limit&offset=$offset',
       );
-      return (response as List<dynamic>)
+      return (response)
           .map((json) => _parseMinyans(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
@@ -87,7 +87,7 @@ class MinyanRemoteDataSourceImpl implements MinyanRemoteDataSource {
       final response = await networkService.get<List<dynamic>>(
         '/minyans/nearby?latitude=$latitude&longitude=$longitude&radiusKm=$radiusKm&limit=$limit&offset=$offset',
       );
-      return (response as List<dynamic>)
+      return (response)
           .map((json) => _parseMinyans(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
@@ -222,7 +222,7 @@ class MinyanRemoteDataSourceImpl implements MinyanRemoteDataSource {
       final response = await networkService.get<List<dynamic>>(
         '/minyans/search?q=$query&limit=$limit&offset=$offset',
       );
-      return (response as List<dynamic>)
+      return (response)
           .map((json) => _parseMinyans(json as Map<String, dynamic>))
           .toList();
     } catch (e) {

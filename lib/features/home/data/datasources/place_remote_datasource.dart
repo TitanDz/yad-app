@@ -57,7 +57,7 @@ class PlaceRemoteDataSourceImpl implements PlaceRemoteDataSource {
       final response = await networkService.get<List<dynamic>>(
         '/places/saved?limit=$limit&offset=$offset',
       );
-      return (response as List<dynamic>)
+      return (response)
           .map((json) => _parsePlace(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
@@ -169,7 +169,7 @@ class PlaceRemoteDataSourceImpl implements PlaceRemoteDataSource {
       final response = await networkService.get<List<dynamic>>(
         '/places/search?q=$query&limit=$limit&offset=$offset',
       );
-      return (response as List<dynamic>)
+      return (response)
           .map((json) => _parsePlace(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
