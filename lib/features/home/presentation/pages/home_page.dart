@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:yad_app/config/theme.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
+import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -156,7 +158,93 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: _buildPageContent(context),
+      bottomNavigationBar: BlocListener<HomeBloc, HomeState>(
+        listener: (context, state) {
+          if (state is HomeError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppTheme.error,
+              ),
+            );
+          }
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                width: 1,
+              ),
+            ),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: (index) {
+              if (index == 1) {
+                // Navigate to Minyan page
+                context.push('/minyanim');
+              } else {
+                setState(() => _selectedIndex = index);
+              }
+            },
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            elevation: 0,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            selectedFontSize: 12,
+            unselectedFontSize: 12,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.location_on),
+                label: 'MAP',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.group),
+                label: 'MINYAN',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notifications_none),
+                label: 'NOTIFICATIONS',
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: _selectedIndex == 0
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: FloatingActionButton.extended(
+                onPressed: () {
+                  context.push('/create-minyan');
+                },
+                backgroundColor: AppTheme.primary,
+                label: const Text(
+                  'Create Minyan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                ),
+              ),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildPageContent(BuildContext context) {
+    if (_selectedIndex == 0) {
+      // Map view
+      return Column(
         children: [
           // Top Header Bar (Avatar, Title, Settings)
           SafeArea(
@@ -376,89 +464,15 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: BlocListener<HomeBloc, HomeState>(
-        listener: (context, state) {
-          if (state is HomeError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppTheme.error,
-              ),
-            );
-          }
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                width: 1,
-              ),
-            ),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (index) {
-              if (index == 2) {
-                // Settings tab
-                context.push('/settings');
-              } else {
-                setState(() => _selectedIndex = index);
-              }
-            },
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            elevation: 0,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.location_on),
-                label: 'Map',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.notifications_none),
-                label: 'Notifications',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                label: 'Settings',
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: _selectedIndex == 0
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  context.push('/create-minyan');
-                },
-                backgroundColor: AppTheme.primary,
-                label: const Text(
-                  'Create Minyan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                icon: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                ),
-              ),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
+      );
+    } else if (_selectedIndex == 2) {
+      // Notifications view
+      return BlocProvider<NotificationBloc>(
+        create: (context) => NotificationBloc()..add(const LoadNotificationsEvent()),
+        child: const NotificationsHomePage(),
+      );
+    }
+
+    return const SizedBox();
   }
-
-
 }
-

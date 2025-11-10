@@ -8,9 +8,15 @@ import 'package:yad_app/features/auth/presentation/bloc/otp_bloc.dart';
 import 'package:yad_app/features/auth/presentation/pages/login_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/otp_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/register_page.dart';
+import 'package:yad_app/features/auth/presentation/pages/forgot_password_page.dart';
+import 'package:yad_app/features/auth/presentation/pages/forgot_password_code_page.dart';
+import 'package:yad_app/features/auth/presentation/pages/reset_password_page.dart';
+import 'package:yad_app/features/auth/presentation/pages/password_reset_success_page.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/pages/home_page.dart';
 import 'package:yad_app/features/home/presentation/pages/create_minyan_page.dart';
+import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
 import 'package:yad_app/features/settings/data/datasources/settings_datasource.dart';
 import 'package:yad_app/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:yad_app/features/settings/presentation/pages/initial_setup_page.dart';
@@ -29,6 +35,10 @@ class AppRouter {
   static const String login = '/login';
   static const String register = '/register';
   static const String otp = '/otp';
+  static const String forgotPassword = '/forgot-password';
+  static const String forgotPasswordCode = '/forgot-password-code';
+  static const String resetPassword = '/reset-password';
+  static const String passwordResetSuccess = '/password-reset-success';
   static const String initialSetup = '/initial-setup';
   static const String settings = '/settings';
   static const String profile = '/profile';
@@ -40,6 +50,7 @@ class AppRouter {
   static const String helpCenter = '/help-center';
   static const String about = '/about';
   static const String createMinyan = '/create-minyan';
+  static const String minyanim = '/minyanim';
 
   static final GoRouter router = GoRouter(
     initialLocation: login,
@@ -65,6 +76,32 @@ class AppRouter {
           create: (context) => getIt<AuthBloc>(),
           child: const RegisterPage(),
         ),
+      ),
+      GoRoute(
+        path: forgotPassword,
+        builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: forgotPasswordCode,
+        builder: (context, state) {
+          final emailOrPhone = state.extra as String?;
+          return ForgotPasswordCodePage(
+            emailOrPhone: emailOrPhone ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: resetPassword,
+        builder: (context, state) {
+          final emailOrPhone = state.extra as String?;
+          return ResetPasswordPage(
+            emailOrPhone: emailOrPhone ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: passwordResetSuccess,
+        builder: (context, state) => const PasswordResetSuccessPage(),
       ),
       GoRoute(
         path: otp,
@@ -134,6 +171,13 @@ class AppRouter {
       GoRoute(
         path: createMinyan,
         builder: (context, state) => const CreateMinyanPage(),
+      ),
+      GoRoute(
+        path: minyanim,
+        builder: (context, state) => BlocProvider<MinyanBloc>(
+          create: (context) => MinyanBloc(),
+          child: const MinyanPage(),
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

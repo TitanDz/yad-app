@@ -10,8 +10,8 @@ abstract class OtpDataSource {
 
 /// Mock OTP implementation
 class MockOtpDataSource implements OtpDataSource {
-  /// Mock OTP code for testing: "123456"
-  static const String _mockOtpCode = '123456';
+  /// Mock OTP code for testing: "1234"
+  static const String _mockOtpCode = '1234';
 
   /// Simulated delay for OTP verification
   static const int apiDelayMs = 1500;
