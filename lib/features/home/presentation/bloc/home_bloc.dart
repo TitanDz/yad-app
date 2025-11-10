@@ -5,6 +5,7 @@ import 'package:yad_app/features/home/data/datasources/location_service.dart';
 import 'package:yad_app/features/home/data/datasources/places_service.dart';
 import 'package:yad_app/features/home/domain/entities/place.dart';
 import 'package:yad_app/features/home/domain/entities/user_location.dart';
+import 'package:yad_app/features/home/domain/entities/minyan.dart';
 
 // Events
 abstract class HomeEvent extends Equatable {
@@ -20,11 +21,12 @@ class InitializeMapEvent extends HomeEvent {
 
 class SearchPlacesEvent extends HomeEvent {
   final String query;
+  final bool jewishVenuesOnly;
 
-  const SearchPlacesEvent(this.query);
+  const SearchPlacesEvent(this.query, {this.jewishVenuesOnly = false});
 
   @override
-  List<Object?> get props => [query];
+  List<Object?> get props => [query, jewishVenuesOnly];
 }
 
 class SelectPlaceEvent extends HomeEvent {
@@ -50,8 +52,27 @@ class UpdateMapCameraEvent extends HomeEvent {
   List<Object?> get props => [position, zoom];
 }
 
+class LoadJewishVenuesEvent extends HomeEvent {
+  const LoadJewishVenuesEvent();
+}
+
 class ClearSearchEvent extends HomeEvent {
   const ClearSearchEvent();
+}
+
+class LoadPrayerLocationsEvent extends HomeEvent {
+  /// Load both user-created minyanim and Jewish synagogues on the map
+  const LoadPrayerLocationsEvent();
+}
+
+class SelectMarkerEvent extends HomeEvent {
+  final String markerId;
+  final bool isMinyan;
+
+  const SelectMarkerEvent(this.markerId, {this.isMinyan = false});
+
+  @override
+  List<Object?> get props => [markerId, isMinyan];
 }
 
 // States
@@ -75,12 +96,20 @@ class HomeMapReady extends HomeState {
   final List<Place> searchResults;
   final Place? selectedPlace;
   final Set<Marker> markers;
+  final List<Minyan> minyans;
+  final List<Place> synagogues;
+  final Minyan? selectedMinyan;
+  final Place? selectedSynagogue;
 
   const HomeMapReady({
     this.userLocation,
     this.searchResults = const [],
     this.selectedPlace,
     this.markers = const {},
+    this.minyans = const [],
+    this.synagogues = const [],
+    this.selectedMinyan,
+    this.selectedSynagogue,
   });
 
   HomeMapReady copyWith({
@@ -88,18 +117,34 @@ class HomeMapReady extends HomeState {
     List<Place>? searchResults,
     Place? selectedPlace,
     Set<Marker>? markers,
+    List<Minyan>? minyans,
+    List<Place>? synagogues,
+    Minyan? selectedMinyan,
+    Place? selectedSynagogue,
   }) {
     return HomeMapReady(
       userLocation: userLocation ?? this.userLocation,
       searchResults: searchResults ?? this.searchResults,
       selectedPlace: selectedPlace ?? this.selectedPlace,
       markers: markers ?? this.markers,
+      minyans: minyans ?? this.minyans,
+      synagogues: synagogues ?? this.synagogues,
+      selectedMinyan: selectedMinyan ?? this.selectedMinyan,
+      selectedSynagogue: selectedSynagogue ?? this.selectedSynagogue,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [userLocation, searchResults, selectedPlace, markers];
+  List<Object?> get props => [
+        userLocation,
+        searchResults,
+        selectedPlace,
+        markers,
+        minyans,
+        synagogues,
+        selectedMinyan,
+        selectedSynagogue,
+      ];
 }
 
 class HomeError extends HomeState {
@@ -124,7 +169,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         super(const HomeInitial()) {
     on<InitializeMapEvent>(_onInitializeMap);
     on<SearchPlacesEvent>(_onSearchPlaces);
+    on<LoadJewishVenuesEvent>(_onLoadJewishVenues);
+    on<LoadPrayerLocationsEvent>(_onLoadPrayerLocations);
     on<SelectPlaceEvent>(_onSelectPlace);
+    on<SelectMarkerEvent>(_onSelectMarker);
     on<GetCurrentLocationEvent>(_onGetCurrentLocation);
     on<UpdateMapCameraEvent>(_onUpdateMapCamera);
     on<ClearSearchEvent>(_onClearSearch);
@@ -138,20 +186,38 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       final userLocation = await _locationService.getCurrentLocation();
 
+      // Load prayer locations and markers
+      final synagogues = await _placesService.getNearbyJewishVenues(
+        latitude: userLocation?.latitude ?? 40.7128,
+        longitude: userLocation?.longitude ?? -74.0060,
+      );
+
+      // Create markers for synagogues (using violet color)
+      final synagogueMarkers = synagogues.asMap().entries.map((entry) {
+        final place = entry.value;
+        return Marker(
+          markerId: MarkerId('synagogue_${place.id}'),
+          position: LatLng(place.latitude, place.longitude),
+          infoWindow: InfoWindow(
+            title: place.name,
+            snippet: '${place.placeType}\n${place.address}',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueViolet,
+          ),
+        );
+      }).toSet();
+
+      // Add current location marker
+      final updatedMarkers = _addCurrentLocationMarker(
+        synagogueMarkers,
+        userLocation,
+      );
+
       emit(HomeMapReady(
         userLocation: userLocation,
-        markers: userLocation != null
-            ? {
-                Marker(
-                  markerId: const MarkerId('current_location'),
-                  position: LatLng(
-                    userLocation.latitude,
-                    userLocation.longitude,
-                  ),
-                  infoWindow: const InfoWindow(title: 'Your Location'),
-                ),
-              }
-            : {},
+        markers: updatedMarkers,
+        synagogues: synagogues,
       ));
     } catch (e) {
       emit(HomeError('Failed to initialize map: ${e.toString()}'));
@@ -171,6 +237,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         event.query,
         latitude: currentState.userLocation?.latitude,
         longitude: currentState.userLocation?.longitude,
+        jewishVenuesOnly: event.jewishVenuesOnly,
       );
 
       final newMarkers = _createMarkersFromPlaces(results);
@@ -187,6 +254,42 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       ));
     } catch (e) {
       emit(HomeError('Search failed: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onLoadJewishVenues(
+    LoadJewishVenuesEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    if (state is! HomeMapReady) return;
+
+    final currentState = state as HomeMapReady;
+
+    try {
+      if (currentState.userLocation == null) {
+        emit(HomeError('Location required to load nearby Jewish venues'));
+        return;
+      }
+
+      final results = await _placesService.getNearbyJewishVenues(
+        latitude: currentState.userLocation!.latitude,
+        longitude: currentState.userLocation!.longitude,
+      );
+
+      final newMarkers = _createMarkersFromPlaces(results);
+
+      // Add current location marker if available
+      final updatedMarkers = _addCurrentLocationMarker(
+        newMarkers,
+        currentState.userLocation,
+      );
+
+      emit(currentState.copyWith(
+        searchResults: results,
+        markers: updatedMarkers,
+      ));
+    } catch (e) {
+      emit(HomeError('Failed to load Jewish venues: ${e.toString()}'));
     }
   }
 
@@ -320,5 +423,88 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   ) {
     final updatedMarkers = _createMarkersFromPlaces([place]);
     return _addCurrentLocationMarker(updatedMarkers, userLocation);
+  }
+
+  /// Load both minyanim and synagogues on the map
+  Future<void> _onLoadPrayerLocations(
+    LoadPrayerLocationsEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    if (state is! HomeMapReady) return;
+
+    final currentState = state as HomeMapReady;
+
+    try {
+      // Load nearby Jewish synagogues
+      final synagogues = await _placesService.getNearbyJewishVenues(
+        latitude: currentState.userLocation?.latitude ?? 40.7128,
+        longitude: currentState.userLocation?.longitude ?? -74.0060,
+      );
+
+      // Create markers for synagogues (using purple pins)
+      final synagogueMarkers = synagogues.asMap().entries.map((entry) {
+        final place = entry.value;
+        return Marker(
+          markerId: MarkerId('synagogue_${place.id}'),
+          position: LatLng(place.latitude, place.longitude),
+          infoWindow: InfoWindow(
+            title: place.name,
+            snippet: '${place.placeType}\n${place.address}',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueViolet,
+          ),
+        );
+      }).toSet();
+
+      // Note: Minyanim would be loaded from MinyanBloc in a real scenario
+      // For now, we're demonstrating the structure
+      final updatedMarkers = _addCurrentLocationMarker(
+        synagogueMarkers,
+        currentState.userLocation,
+      );
+
+      emit(currentState.copyWith(
+        synagogues: synagogues,
+        markers: updatedMarkers,
+      ));
+    } catch (e) {
+      emit(HomeError('Failed to load prayer locations: ${e.toString()}'));
+    }
+  }
+
+  /// Handle marker selection on map
+  Future<void> _onSelectMarker(
+    SelectMarkerEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    if (state is! HomeMapReady) return;
+
+    final currentState = state as HomeMapReady;
+
+    try {
+      if (event.isMinyan) {
+        // Handle minyan marker selection
+        // This would typically update the selected minyan
+        emit(currentState); // Placeholder for minyan selection logic
+      } else {
+        // Handle synagogue marker selection
+        final synagogue = currentState.synagogues.firstWhere(
+          (s) => s.id == event.markerId,
+          orElse: () => Place(
+            id: '',
+            name: '',
+            address: '',
+            latitude: 0,
+            longitude: 0,
+          ),
+        );
+        if (synagogue.id.isNotEmpty) {
+          emit(currentState.copyWith(selectedSynagogue: synagogue));
+        }
+      }
+    } catch (e) {
+      emit(HomeError('Failed to select marker: ${e.toString()}'));
+    }
   }
 }

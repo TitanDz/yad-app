@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:yad_app/config/theme.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
 import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
+import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -155,6 +157,201 @@ class _HomePageState extends State<HomePage> {
       ]''';
   }
 
+  /// Handle marker tap to show detailed information
+  void _handleMarkerTap(MarkerId markerId, HomeMapReady state) {
+    final markerIdValue = markerId.value;
+    if (markerIdValue.startsWith('synagogue_')) {
+      final synagogueId = markerIdValue.replaceFirst('synagogue_', '');
+      context.read<HomeBloc>().add(SelectMarkerEvent(synagogueId, isMinyan: false));
+      _showPrayerLocationDetailsSheet(state, synagogueId, false);
+    } else if (markerIdValue.startsWith('minyan_')) {
+      final minyanId = markerIdValue.replaceFirst('minyan_', '');
+      context.read<HomeBloc>().add(SelectMarkerEvent(minyanId, isMinyan: true));
+      _showPrayerLocationDetailsSheet(state, minyanId, true);
+    }
+  }
+
+  /// Show detailed information sheet for prayer location
+  void _showPrayerLocationDetailsSheet(
+    HomeMapReady state,
+    String locationId,
+    bool isMinyan,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        builder: (context, scrollController) {
+          if (isMinyan && state.selectedMinyan != null) {
+            return _buildMinyanDetailsSheet(state.selectedMinyan!, scrollController);
+          } else if (!isMinyan && state.selectedSynagogue != null) {
+            return _buildSynagogueDetailsSheet(state.selectedSynagogue!, scrollController);
+          }
+          return const SizedBox();
+        },
+      ),
+    );
+  }
+
+  /// Build minyan details sheet
+  Widget _buildMinyanDetailsSheet(dynamic minyan, ScrollController scrollController) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: ListView(
+        controller: scrollController,
+        padding: const EdgeInsets.all(16),
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('User-Created Minyan',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text('Location Details',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _buildDetailRow('Name', 'Minyan'),
+          _buildDetailRow('Date', 'Today'),
+          _buildDetailRow('Time', '7:00 AM'),
+          _buildDetailRow('Prayer Type', 'Shacharit'),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close),
+            label: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build synagogue details sheet
+  Widget _buildSynagogueDetailsSheet(dynamic synagogue, ScrollController scrollController) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: ListView(
+        controller: scrollController,
+        padding: const EdgeInsets.all(16),
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Established Prayer Venue',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text('Venue Details',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _buildDetailRow('Name', synagogue.name),
+          _buildDetailRow('Type', synagogue.placeType ?? 'Synagogue'),
+          _buildDetailRow('Address', synagogue.address),
+          if (synagogue.phoneNumber != null) _buildDetailRow('Phone', synagogue.phoneNumber!),
+          if (synagogue.website != null) _buildDetailRow('Website', synagogue.website!),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close),
+            label: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build detail row for information display
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 4),
+          Text(value,
+              style: Theme.of(context).textTheme.bodyMedium,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,12 +380,7 @@ class _HomePageState extends State<HomePage> {
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: (index) {
-              if (index == 1) {
-                // Navigate to Minyan page
-                context.push('/minyanim');
-              } else {
-                setState(() => _selectedIndex = index);
-              }
+              setState(() => _selectedIndex = index);
             },
             type: BottomNavigationBarType.fixed,
             backgroundColor: Theme.of(context).colorScheme.surface,
@@ -464,6 +656,12 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ],
+      );
+    } else if (_selectedIndex == 1) {
+      // Minyan view
+      return BlocProvider<MinyanBloc>(
+        create: (context) => MinyanBloc()..add(const LoadMyMinyansEvent()),
+        child: const MinyanPage(),
       );
     } else if (_selectedIndex == 2) {
       // Notifications view
