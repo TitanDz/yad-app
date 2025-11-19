@@ -62,7 +62,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         curve: Curves.easeInOut,
       );
     } else {
-      context.go('/welcome');
+      context.go('/login');
     }
   }
 
@@ -76,7 +76,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   void _skipOnboarding() {
-    context.go('/welcome');
+    context.go('/login');
   }
 
   @override

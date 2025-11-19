@@ -24,7 +24,6 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
     'Europe/Paris',
     'Asia/Tokyo',
   ];
-  final List<String> _visibilityOptions = ['Active', 'Invisible'];
 
   late String _selectedLanguage;
   late String _selectedTimeZone;
@@ -69,11 +68,36 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.celestial,
       appBar: AppBar(
+        backgroundColor: AppTheme.celestial,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: AppTheme.neutral900),
-          onPressed: () => context.pop(),
+        leading: GestureDetector(
+          onTap: () => context.pop(),
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: AppTheme.neutral400,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(
+              Icons.arrow_back,
+              color: AppTheme.neutral900,
+              size: 20,
+            ),
+          ),
+        ),
+        centerTitle: true,
+        title: const Text(
+          'Initial Setup',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.neutral900,
+          ),
         ),
       ),
       body: BlocListener<SettingsBloc, SettingsState>(
@@ -97,19 +121,8 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Title
-              const Text(
-                'Initial Setup',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.neutral900,
-                ),
-              ),
-              const SizedBox(height: 32),
-
               // Language Section
               const Text(
                 'Language',
@@ -143,8 +156,9 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
               const SizedBox(height: 16),
               Container(
                 decoration: BoxDecoration(
+                  color: Colors.white,
                   border: Border.all(color: AppTheme.neutral300),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: DropdownButton<String>(
                   value: _selectedTimeZone,
@@ -180,23 +194,30 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ..._visibilityOptions.asMap().entries.map(
-                (entry) {
-                  final label = entry.value;
-                  final isActive = label == 'Active';
-                  final description = isActive
-                      ? 'Visible to other users'
-                      : 'Invisible to other users';
-
-                  return VisibilityOption(
-                    label: label,
-                    description: description,
-                    isSelected: _selectedVisibility == label,
-                    onTap: () {
-                      setState(() => _selectedVisibility = label);
-                    },
-                  );
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: VisibilityOption(
+                      label: 'Active',
+                      description: 'Visible to other users',
+                      isSelected: _selectedVisibility == 'Active',
+                      onTap: () {
+                        setState(() => _selectedVisibility = 'Active');
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: VisibilityOption(
+                      label: 'Invisible',
+                      description: 'Invisible to other users',
+                      isSelected: _selectedVisibility == 'Invisible',
+                      onTap: () {
+                        setState(() => _selectedVisibility = 'Invisible');
+                      },
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
 
@@ -210,26 +231,37 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Radius'),
-                  Text(
-                    '$_searchRadius mi',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Slider(
-                value: _searchRadius.toDouble(),
-                min: 1,
-                max: 50,
-                divisions: 49,
-                activeColor: AppTheme.primary,
-                onChanged: (value) {
-                  setState(() => _searchRadius = value.toInt());
-                },
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Radius'),
+                        Text(
+                          '$_searchRadius mi',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Slider(
+                      value: _searchRadius.toDouble(),
+                      min: 1,
+                      max: 50,
+                      divisions: 49,
+                      activeColor: AppTheme.primary,
+                      onChanged: (value) {
+                        setState(() => _searchRadius = value.toInt());
+                      },
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -248,12 +280,16 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
                   setState(() => _homeZone = value);
                 },
                 decoration: InputDecoration(
-                  hintText: 'Enter Home Zone',
+                  hintText: 'Select Time Zone',
                   filled: true,
-                  fillColor: AppTheme.neutral100,
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.neutral300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.neutral300),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -266,15 +302,16 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
               // Save Button
               SizedBox(
                 width: double.infinity,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleSave,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
-                    disabledBackgroundColor: AppTheme.neutral400,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    disabledBackgroundColor: AppTheme.neutral300,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(28),
                     ),
+                    elevation: 0,
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -326,8 +363,8 @@ class LanguageOption extends StatelessWidget {
           border: Border.all(
             color: isSelected ? AppTheme.primary : AppTheme.neutral300,
           ),
-          borderRadius: BorderRadius.circular(8),
-          color: isSelected ? AppTheme.primaryLight : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppTheme.primaryLight : Colors.white,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -389,62 +426,46 @@ class VisibilityOption extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected ? AppTheme.primary : AppTheme.neutral300,
           ),
-          borderRadius: BorderRadius.circular(8),
-          color: isSelected ? AppTheme.primaryLight : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppTheme.primary : Colors.white,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Icon(
+                  label == 'Active' ? Icons.visibility : Icons.visibility_off,
+                  color: isSelected ? Colors.white : AppTheme.neutral600,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.normal,
-                    color: AppTheme.neutral900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.neutral600,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : AppTheme.neutral900,
                   ),
                 ),
               ],
             ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? AppTheme.primary : AppTheme.neutral400,
-                  width: 2,
-                ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected
+                    ? Colors.white.withValues(alpha: 0.8)
+                    : AppTheme.neutral600,
               ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                    )
-                  : null,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
