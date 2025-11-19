@@ -29,8 +29,12 @@ import 'package:yad_app/features/settings/presentation/pages/travel_mode_page.da
 import 'package:yad_app/features/settings/presentation/pages/report_problem_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/help_center_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/about_page.dart';
+import 'package:yad_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:yad_app/features/auth/presentation/pages/welcome_page.dart';
 
 class AppRouter {
+  static const String onboarding = '/onboarding';
+  static const String welcome = '/welcome';
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
@@ -53,8 +57,16 @@ class AppRouter {
   static const String minyanim = '/minyanim';
 
   static final GoRouter router = GoRouter(
-    initialLocation: login,
+    initialLocation: onboarding,
     routes: [
+      GoRoute(
+        path: onboarding,
+        builder: (context, state) => const OnboardingPage(),
+      ),
+      GoRoute(
+        path: welcome,
+        builder: (context, state) => const WelcomePage(),
+      ),
       GoRoute(
         path: home,
         builder: (context, state) => BlocProvider<HomeBloc>(
