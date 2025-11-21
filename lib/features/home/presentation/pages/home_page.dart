@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:yad_app/config/service_locator.dart';
@@ -59,6 +60,19 @@ class _HomePageState extends State<HomePage> {
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
+  }
+
+  Widget _buildBottomNavIcon(String assetPath, int tabIndex) {
+    final isSelected = _selectedIndex == tabIndex;
+    return SvgPicture.asset(
+      assetPath,
+      width: 24,
+      height: 24,
+      colorFilter: ColorFilter.mode(
+        isSelected ? AppTheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+        BlendMode.srcIn,
+      ),
+    );
   }
 
   String _getDarkMapStyle() {
@@ -386,21 +400,21 @@ class _HomePageState extends State<HomePage> {
             type: BottomNavigationBarType.fixed,
             backgroundColor: Theme.of(context).colorScheme.surface,
             elevation: 0,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
+            selectedItemColor: AppTheme.primary,
             unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
             selectedFontSize: 12,
             unselectedFontSize: 12,
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.location_on),
+                icon: _buildBottomNavIcon('assets/images/Navbar/home.svg', 0),
                 label: 'MAP',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.group),
+                icon: _buildBottomNavIcon('assets/images/Navbar/calendar.svg', 1),
                 label: 'MINYAN',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.notifications_none),
+                icon: _buildBottomNavIcon('assets/images/Icons/notification.svg', 2),
                 label: 'NOTIFICATIONS',
               ),
             ],
