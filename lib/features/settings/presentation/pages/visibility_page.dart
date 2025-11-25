@@ -15,63 +15,101 @@ class _VisibilityPageState extends State<VisibilityPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Visibility',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+    return Column(
+      children: [
+        AppBar(
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () => context.pop(),
+          ),
+          title: const Text(
+            'Visibility',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Visibility Section
-              Text(
-                'Visibility',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
+        Expanded(
+          child: Material(
+            color: AppTheme.purity,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Visibility Section
+                    Text(
+                      'Visibility',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Active
+                    _buildVisibilityToggleItem(
+                      title: 'Active',
+                      subtitle: 'Appear on the map as active and available for Minyanim.',
+                      value: _isActive,
+                      onChanged: (value) {
+                        setState(() => _isActive = value);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Hide Exact Location
+                    _buildVisibilityToggleItem(
+                      title: 'Hide Exact Location',
+                      subtitle: 'Hide your exact location on the map. Others will see an approximate area.',
+                      value: _hideExactLocation,
+                      onChanged: (value) {
+                        setState(() => _hideExactLocation = value);
+                      },
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Save Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Preferences saved!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save Preferences',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Active
-              _buildVisibilityToggleItem(
-                title: 'Active',
-                subtitle: 'Appear on the map as active and available for Minyanim.',
-                value: _isActive,
-                onChanged: (value) {
-                  setState(() => _isActive = value);
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Hide Exact Location
-              _buildVisibilityToggleItem(
-                title: 'Hide Exact Location',
-                subtitle: 'Hide your exact location on the map. Others will see an approximate area.',
-                value: _hideExactLocation,
-                onChanged: (value) {
-                  setState(() => _hideExactLocation = value);
-                },
-              ),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -81,40 +119,60 @@ class _VisibilityPageState extends State<VisibilityPage> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurface,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.celestial.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: AppTheme.primary,
-        ),
-      ],
+          const SizedBox(width: 12),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppTheme.primary,
+            thumbColor: MaterialStateProperty.resolveWith((states) {
+              if (states.contains(MaterialState.selected)) {
+                return Colors.white;
+              }
+              return Colors.white;
+            }),
+            trackColor: MaterialStateProperty.resolveWith((states) {
+              if (states.contains(MaterialState.selected)) {
+                return AppTheme.primary;
+              }
+              return AppTheme.celestial.withValues(alpha: 0.3);
+            }),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -30,6 +30,10 @@ class _SettingsPageState extends State<SettingsPage> {
             width: 44,
             height: 44,
             margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.15),
+            ),
             child: IconButton(
               icon: SvgPicture.asset(
                 'assets/images/Icons/goback.svg',
@@ -58,7 +62,7 @@ class _SettingsPageState extends State<SettingsPage> {
             color: backgroundColor,
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -95,7 +99,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 4),
 
                   // Preferences Section
                   _buildSectionTitle('Preferences', context),
@@ -130,7 +134,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 4),
 
                   // Support Section
                   _buildSectionTitle('Support', context),
@@ -165,7 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 4),
 
                   // Preferences Toggle
                   _buildDarkModeToggle(),
@@ -362,13 +366,24 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               const SizedBox(width: 16),
-              Switch(
+              Switch.adaptive(
                 value: state.isDarkMode,
                 onChanged: (value) {
                   context.read<ThemeBloc>().add(ToggleThemeEvent());
                 },
-                activeTrackColor: AppTheme.primary.withValues(alpha: 0.3),
-                activeThumbColor: AppTheme.primary,
+                activeColor: AppTheme.primary,
+                thumbColor: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return Colors.white;
+                  }
+                  return Colors.white;
+                }),
+                trackColor: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return AppTheme.primary;
+                  }
+                  return AppTheme.celestial.withValues(alpha: 0.3);
+                }),
               ),
             ],
           ),

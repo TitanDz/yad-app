@@ -14,7 +14,6 @@ class InitialSetupPage extends StatefulWidget {
 }
 
 class _InitialSetupPageState extends State<InitialSetupPage> {
-  final List<String> _languages = ['English', 'Hebrew', 'Spanish'];
   final List<String> _timeZones = [
     'America/New_York',
     'America/Chicago',
@@ -25,7 +24,6 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
     'Asia/Tokyo',
   ];
 
-  late String _selectedLanguage;
   late String _selectedTimeZone;
   late String _selectedVisibility;
   late int _searchRadius;
@@ -36,7 +34,6 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
   @override
   void initState() {
     super.initState();
-    _selectedLanguage = 'English';
     _selectedTimeZone = 'America/New_York';
     _selectedVisibility = 'Active';
     _searchRadius = 10;
@@ -56,7 +53,7 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
 
     context.read<SettingsBloc>().add(
           SaveSettingsEvent(
-            language: _selectedLanguage,
+            language: 'English',
             timeZone: _selectedTimeZone,
             visibility: _selectedVisibility,
             searchRadius: _searchRadius,
@@ -123,27 +120,6 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Language Section
-              const Text(
-                'Language',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.neutral900,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ..._languages.map(
-                (language) => LanguageOption(
-                  label: language,
-                  isSelected: _selectedLanguage == language,
-                  onTap: () {
-                    setState(() => _selectedLanguage = language);
-                  },
-                ),
-              ),
-              const SizedBox(height: 32),
-
               // Time Zone Section
               const Text(
                 'Time Zone',
@@ -334,73 +310,6 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class LanguageOption extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const LanguageOption({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.neutral300,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          color: isSelected ? AppTheme.primaryLight : Colors.white,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: AppTheme.neutral900,
-              ),
-            ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? AppTheme.primary : AppTheme.neutral400,
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-          ],
         ),
       ),
     );
