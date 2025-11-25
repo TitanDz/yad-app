@@ -13,10 +13,8 @@ import 'package:yad_app/features/auth/presentation/pages/forgot_password_code_pa
 import 'package:yad_app/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/password_reset_success_page.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/pages/home_page.dart';
 import 'package:yad_app/features/home/presentation/pages/create_minyan_page.dart';
-import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
 import 'package:yad_app/features/settings/data/datasources/settings_datasource.dart';
 import 'package:yad_app/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:yad_app/features/settings/presentation/pages/initial_setup_page.dart';

@@ -242,8 +242,8 @@ class _PrayerPreferencesPageState extends State<PrayerPreferencesPage> {
             groupValue: value,
             onChanged: onChanged,
             activeColor: AppTheme.primary,
-            fillColor: MaterialStateProperty.resolveWith((states) {
-              if (states.contains(MaterialState.selected)) {
+            fillColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
                 return AppTheme.primary;
               }
               return Colors.grey[300];
@@ -280,14 +280,14 @@ class _PrayerPreferencesPageState extends State<PrayerPreferencesPage> {
             value: value,
             onChanged: onChanged,
             activeColor: AppTheme.primary,
-            thumbColor: MaterialStateProperty.resolveWith((states) {
-              if (states.contains(MaterialState.selected)) {
+            thumbColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
                 return Colors.white;
               }
               return Colors.white;
             }),
-            trackColor: MaterialStateProperty.resolveWith((states) {
-              if (states.contains(MaterialState.selected)) {
+            trackColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
                 return AppTheme.primary;
               }
               return AppTheme.celestial.withValues(alpha: 0.3);

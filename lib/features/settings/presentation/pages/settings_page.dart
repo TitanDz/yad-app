@@ -372,14 +372,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   context.read<ThemeBloc>().add(ToggleThemeEvent());
                 },
                 activeColor: AppTheme.primary,
-                thumbColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                thumbColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return Colors.white;
                   }
                   return Colors.white;
                 }),
-                trackColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                trackColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return AppTheme.primary;
                   }
                   return AppTheme.celestial.withValues(alpha: 0.3);

@@ -186,15 +186,15 @@ class _MinyanPageState extends State<MinyanPage>
         border: Border.all(
           color: Theme.of(context).colorScheme.outlineVariant,
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -202,6 +202,7 @@ class _MinyanPageState extends State<MinyanPage>
                   label,
                   style: TextStyle(
                     fontSize: 13,
+                    fontWeight: FontWeight.w500,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
@@ -284,19 +285,27 @@ class _MinyanPageState extends State<MinyanPage>
 
   Widget _buildMinyanCard(Minyan minyan, bool isMyMinyans) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       color: Theme.of(context).colorScheme.surface,
+      elevation: 0.5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildCardHeader(minyan, isMyMinyans),
-            const SizedBox(height: 8),
-            _buildCardTime(minyan),
-            const SizedBox(height: 8),
-            _buildCardLocation(minyan),
             const SizedBox(height: 12),
+            _buildCardTime(minyan),
+            const SizedBox(height: 10),
+            _buildCardLocation(minyan),
+            const SizedBox(height: 16),
             _buildCardActions(minyan, isMyMinyans),
           ],
         ),
@@ -309,75 +318,91 @@ class _MinyanPageState extends State<MinyanPage>
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  minyan.prayerType,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ],
+          child: Text(
+            minyan.prayerType,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
         ),
-        isMyMinyans
-            ? Text(
-                minyan.date,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              )
-            : Text(
-                '${minyan.distance?.toStringAsFixed(1) ?? '0.0'} mi',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            isMyMinyans
+                ? minyan.date
+                : '${minyan.distance?.toStringAsFixed(1) ?? '0.0'} mi',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildCardTime(Minyan minyan) {
-    return Text(
-      minyan.time,
-      style: TextStyle(
-        fontSize: 14,
-        color: Theme.of(context).colorScheme.primary,
-      ),
+    return Row(
+      children: [
+        Icon(
+          Icons.access_time,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          minyan.time,
+          style: TextStyle(
+            fontSize: 14,
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildCardLocation(Minyan minyan) {
     return Row(
       children: [
+        Icon(
+          Icons.location_on,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             minyan.locationName,
             style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        Text(
-          '${minyan.participantCount} participant${minyan.participantCount != 1 ? 's' : ''}',
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            '${minyan.participantCount}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ),
       ],
@@ -386,37 +411,63 @@ class _MinyanPageState extends State<MinyanPage>
 
   Widget _buildCardActions(Minyan minyan, bool isMyMinyans) {
     if (isMyMinyans) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      final hasPublish = minyan.status == 'draft';
+      final itemCount = hasPublish ? 3 : 2;
+        
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
-          Expanded(
+          SizedBox(
+            width: hasPublish
+                ? (MediaQuery.of(context).size.width - 64) / 3
+                : (MediaQuery.of(context).size.width - 56) / 2,
             child: OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () => context.push('/create-minyan'),
               icon: const Icon(Icons.edit_outlined, size: 16),
               label: const Text('Edit', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
+          SizedBox(
+            width: hasPublish
+                ? (MediaQuery.of(context).size.width - 64) / 3
+                : (MediaQuery.of(context).size.width - 56) / 2,
             child: OutlinedButton.icon(
               onPressed: () =>
                   context.read<MinyanBloc>().add(DeleteMinyanEvent(minyan.id)),
               icon: const Icon(Icons.delete_outlined, size: 16),
               label: const Text('Delete', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ),
-          if (minyan.status == 'draft') ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
+          if (hasPublish)
+            SizedBox(
+              width: (MediaQuery.of(context).size.width - 64) / 3,
+              child: ElevatedButton.icon(
                 onPressed: () => context
                     .read<MinyanBloc>()
                     .add(PublishMinyanEvent(minyan.id)),
                 icon: const Icon(Icons.publish_outlined, size: 16),
                 label: const Text('Publish', style: TextStyle(fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
-          ],
         ],
       );
     } else {
@@ -427,7 +478,8 @@ class _MinyanPageState extends State<MinyanPage>
               context.read<MinyanBloc>().add(JoinMinyanEvent(minyan.id)),
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           icon: const Icon(Icons.group_add, size: 18),
           label: const Text(
@@ -445,88 +497,143 @@ class _MinyanPageState extends State<MinyanPage>
     VoidCallback? onAction,
   }) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.event_note,
-            size: 48,
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (onAction != null) ...[
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: onAction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              child: const Text('Create Minyan'),
+              child: Icon(
+                Icons.event_note,
+                size: 40,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            if (onAction != null) ...[
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: onAction,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add, size: 20),
+                  label: const Text(
+                    'Create Minyan',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildErrorState(String message) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
-            color: Theme.of(context).colorScheme.error,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Error',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.error,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 40,
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            const SizedBox(height: 24),
+            Text(
+              'Something went wrong',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton(
-            onPressed: () {
-              if (_tabController.index == 0) {
-                context.read<MinyanBloc>().add(const LoadMyMinyansEvent());
-              } else {
-                context.read<MinyanBloc>().add(const LoadNearbyMinyansEvent());
-              }
-            },
-            child: const Text('Retry'),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  if (_tabController.index == 0) {
+                    context.read<MinyanBloc>().add(const LoadMyMinyansEvent());
+                  } else {
+                    context.read<MinyanBloc>().add(const LoadNearbyMinyansEvent());
+                  }
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text(
+                  'Try Again',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

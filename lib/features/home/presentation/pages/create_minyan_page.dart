@@ -55,6 +55,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   late GoogleMapController _mapController;
   final LatLng _mapCenter = const LatLng(40.7128, -74.0060); // Default to NYC
   final Set<Marker> _markers = {};
+  List<Map<String, dynamic>> _searchResults = [];
 
   @override
   void initState() {
@@ -117,18 +118,28 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
             'Prayer Type',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _buildPrayerTypeButton('Shacharit'),
-              _buildPrayerTypeButton('Mincha'),
-              _buildPrayerTypeButton('Maariv'),
-            ],
+          SizedBox(
+            height: 48,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildPrayerTypeButton('Shacharit'),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildPrayerTypeButton('Mincha'),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildPrayerTypeButton('Maariv'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 32),
 
@@ -137,7 +148,8 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
             'Date',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 12),
@@ -164,10 +176,14 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
               }
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  width: 1,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -180,7 +196,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                       color: _minyanData.date != null
                           ? Theme.of(context).colorScheme.onSurface
                           : Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: _minyanData.date != null
                           ? FontWeight.w500
                           : FontWeight.normal,
@@ -202,7 +218,8 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
             'Time',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 12),
@@ -227,10 +244,14 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
               }
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  width: 1,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -243,7 +264,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                       color: _minyanData.time != null
                           ? Theme.of(context).colorScheme.onSurface
                           : Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: _minyanData.time != null
                           ? FontWeight.w500
                           : FontWeight.normal,
@@ -265,7 +286,8 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
             'Notes',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 12),
@@ -283,8 +305,27 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
           const SizedBox(height: 32),
@@ -298,7 +339,19 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                   : () {
                       setState(() => _currentStep = 1);
                     },
-              child: const Text('Continue to Location'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Continue to Location',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -316,27 +369,45 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(24),
           color: isSelected
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
           border: Border.all(
             color: isSelected
                 ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline,
+                : Theme.of(context).colorScheme.outlineVariant,
+            width: isSelected ? 0 : 1.5,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: isSelected
-                ? Colors.white
-                : Theme.of(context).colorScheme.onSurface,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                size: 18,
+                color: Colors.white,
+              ),
+            if (isSelected) const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? Colors.white
+                      : Theme.of(context).colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -393,53 +464,141 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                 mapToolbarEnabled: false,
               ),
               
-              // Search Bar overlay
+              // Search Bar overlay with results dropdown
               Positioned(
                 top: 12,
                 left: 16,
                 right: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                child: Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                    onSubmitted: (value) {
-                      if (value.isNotEmpty) {
-                        _searchLocation(value);
-                        _searchController.clear();
-                      }
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search for location',
-                      prefixIcon: const Icon(Icons.search),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {
+                            _updateSearchResults(value);
+                          });
+                        },
+                        onSubmitted: (value) {
+                          if (value.isNotEmpty && _searchResults.isNotEmpty) {
+                            _selectSearchResult(_searchResults[0]);
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search for location',
+                          prefixIcon: const Icon(Icons.search),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchResults = [];
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
                       ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {});
-                              },
-                            )
-                          : null,
                     ),
-                  ),
+                    // Search results dropdown
+                    if (_searchResults.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        constraints: BoxConstraints(
+                          maxHeight: 200,
+                        ),
+                        child: ListView.builder(
+                          itemCount: _searchResults.length,
+                          itemBuilder: (context, index) {
+                            final result = _searchResults[index];
+                            return InkWell(
+                              onTap: () => _selectSearchResult(result),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: index < _searchResults.length - 1
+                                      ? Border(
+                                          bottom: BorderSide(
+                                            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 18,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            result['name'] as String,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Theme.of(context).colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          if (result['address'] != null)
+                                            Text(
+                                              result['address'] as String,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
                 ),
               ),
 
@@ -786,25 +945,15 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
     };
   }
 
-  Future<void> _searchLocation(String query) async {
-    // Mock location search
-    // In production, use a geocoding service or Google Places API
-    late LatLng resultLocation;
-    String resultName = query;
+  Future<void> _selectSearchResult(Map<String, dynamic> result) async {
+    final resultLocation = result['location'] as LatLng;
+    final resultName = result['name'] as String;
+    final addressDetails = await _getAddressDetails(resultLocation);
 
-    if (query.toLowerCase().contains('central park')) {
-      resultLocation = const LatLng(40.7829, -73.9654);
-      resultName = 'Central Park, New York';
-    } else if (query.toLowerCase().contains('times square')) {
-      resultLocation = const LatLng(40.7580, -73.9855);
-      resultName = 'Times Square, New York';
-    } else if (query.toLowerCase().contains('statue')) {
-      resultLocation = const LatLng(40.6892, -74.0445);
-      resultName = 'Statue of Liberty, New York';
-    } else {
-      // Default search behavior
-      resultLocation = _mapCenter;
-    }
+    _searchController.clear();
+    setState(() {
+      _searchResults = [];
+    });
 
     // Add marker to map
     final markerId = MarkerId('selected_location');
@@ -825,9 +974,6 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
       CameraUpdate.newLatLng(resultLocation),
     );
 
-    // Get detailed address
-    final addressDetails = await _getAddressDetails(resultLocation);
-
     // Show confirmation dialog
     _showLocationConfirmDialog(
       addressDetails['name'] ?? resultName,
@@ -841,6 +987,120 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
       postalCode: addressDetails['postalCode'],
       country: addressDetails['country'],
     );
+  }
+
+  void _updateSearchResults(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+      });
+      return;
+    }
+
+    try {
+      final results = await _getGooglePlacePredictions(query);
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching place predictions: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _getGooglePlacePredictions(
+      String input) async {
+    const apiKey = 'AIzaSyD1_mZtNCy3Rbb-qD4sQQtUKd25VzdF8hI';
+    const sessionToken = 'session_token';
+
+    try {
+      final String url =
+          'https://maps.googleapis.com/maps/api/place/autocomplete/json'
+          '?input=$input'
+          '&components=country:us'
+          '&key=$apiKey'
+          '&sessiontoken=$sessionToken';
+
+      final response = await http.get(Uri.parse(url)).timeout(
+        const Duration(seconds: 5),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final predictions = json['predictions'] as List<dynamic>? ?? [];
+
+        final results = <Map<String, dynamic>>[];
+
+        for (var i = 0; i < predictions.length && i < 5; i++) {
+          final prediction = predictions[i] as Map<String, dynamic>;
+          final placeId = prediction['place_id'] as String?;
+          final mainText = prediction['main_text'] as String?;
+          final secondaryText = prediction['secondary_text'] as String?;
+
+          if (placeId != null && mainText != null) {
+            // Get place details to get coordinates
+            final details = await _getPlaceDetails(placeId);
+            if (details != null) {
+              results.add({
+                'name': mainText,
+                'address': secondaryText ?? '',
+                'location': details['location'] as LatLng,
+                'placeId': placeId,
+              });
+            }
+          }
+        }
+
+        return results;
+      } else {
+        debugPrint('Google Places API error: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Exception in _getGooglePlacePredictions: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> _getPlaceDetails(String placeId) async {
+    const apiKey = 'AIzaSyD1_mZtNCy3Rbb-qD4sQQtUKd25VzdF8hI';
+
+    try {
+      final String url =
+          'https://maps.googleapis.com/maps/api/place/details/json'
+          '?place_id=$placeId'
+          '&fields=geometry,formatted_address'
+          '&key=$apiKey';
+
+      final response = await http.get(Uri.parse(url)).timeout(
+        const Duration(seconds: 5),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final result = json['result'] as Map<String, dynamic>?;
+
+        if (result != null) {
+          final geometry = result['geometry'] as Map<String, dynamic>?;
+          final location = geometry?['location'] as Map<String, dynamic>?;
+
+          if (location != null) {
+            return {
+              'location': LatLng(
+                location['lat'] as double,
+                location['lng'] as double,
+              ),
+              'address': result['formatted_address'] as String?,
+            };
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting place details: $e');
+    }
+
+    return null;
   }
 
   void _showLocationConfirmDialog(
@@ -857,53 +1117,135 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   }) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Location'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(locationName),
-            const SizedBox(height: 8),
-            Text(
-              address,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 12,
-              ),
-            ),
-          ],
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _minyanData.locationName = locationName;
-                _minyanData.latitude = lat;
-                _minyanData.longitude = lng;
-                _minyanData.street = street ?? '';
-                _minyanData.neighborhood = neighborhood ?? '';
-                _minyanData.locality = locality ?? '';
-                _minyanData.administrativeArea = administrativeArea ?? '';
-                _minyanData.postalCode = postalCode ?? '';
-                _minyanData.country = country ?? '';
-                _minyanData.fullAddress = address;
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Location set to: $locationName'),
-                  duration: const Duration(seconds: 2),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Confirm Location',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  letterSpacing: 0.5,
                 ),
-              );
-            },
-            child: const Text('Confirm'),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            locationName,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      address,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _minyanData.locationName = locationName;
+                          _minyanData.latitude = lat;
+                          _minyanData.longitude = lng;
+                          _minyanData.street = street ?? '';
+                          _minyanData.neighborhood = neighborhood ?? '';
+                          _minyanData.locality = locality ?? '';
+                          _minyanData.administrativeArea = administrativeArea ?? '';
+                          _minyanData.postalCode = postalCode ?? '';
+                          _minyanData.country = country ?? '';
+                          _minyanData.fullAddress = address;
+                        });
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Location set to: $locationName'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Confirm',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -927,28 +1269,28 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
           const Text(
             'Minyan Details',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 20),
-          _buildDetailItem(Icons.menu_book, 'Prayer Type', prayerTypeStr),
-          const SizedBox(height: 16),
-          _buildDetailItem(Icons.calendar_today, 'Date', dateStr),
-          const SizedBox(height: 16),
-          _buildDetailItem(Icons.access_time, 'Time', timeStr),
-          const SizedBox(height: 16),
-          _buildDetailItem(Icons.location_on, 'Location', locationStr),
+          const SizedBox(height: 24),
+          _buildDetailCard(Icons.menu_book, 'Prayer Type', prayerTypeStr),
+          const SizedBox(height: 12),
+          _buildDetailCard(Icons.calendar_today, 'Date', dateStr),
+          const SizedBox(height: 12),
+          _buildDetailCard(Icons.access_time, 'Time', timeStr),
+          const SizedBox(height: 12),
+          _buildDetailCard(Icons.location_on, 'Location', locationStr),
           // Display complete address details if location was selected
           if (_minyanData.fullAddress != null && _minyanData.fullAddress!.isNotEmpty) ...
             [
               const SizedBox(height: 12),
               _buildAddressDetailsSection(),
             ],
-          const SizedBox(height: 16),
-          _buildDetailItem(Icons.note, 'Notes', notesStr),
+          const SizedBox(height: 12),
+          _buildDetailCard(Icons.note, 'Notes', notesStr),
           const SizedBox(height: 48),
-          // ... existing code ...
           Row(
             children: [
               Expanded(
@@ -956,7 +1298,19 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                   onPressed: () {
                     setState(() => _currentStep = 0);
                   },
-                  child: const Text('Edit'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Edit',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -965,10 +1319,79 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                   onPressed: () {
                     setState(() => _currentStep = 3);
                   },
-                  child: const Text('Publish Minyan'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Publish Minyan',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailCard(IconData icon, String title, String value) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1101,22 +1524,32 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
         // Header illustration area
         Expanded(
           child: Container(
-            color: const Color(0xFFFAE8D8),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.check_circle,
-                    size: 80,
-                    color: Theme.of(context).colorScheme.primary,
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                    ),
+                    child: Icon(
+                      Icons.check_circle,
+                      size: 60,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
+                  Text(
                     'Your Minyan is live!',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1126,8 +1559,9 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                       'Share the link below or the QR code to invite others to join your Minyan.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.5,
                       ),
                     ),
                   ),
@@ -1138,112 +1572,148 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
         ),
         // Link and QR Code section
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             border: Border(
               top: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                width: 1,
               ),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Link field
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Share Link Label
+                Text(
+                  'Share This Link',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.3,
                   ),
                 ),
-                child: Row(
+                const SizedBox(height: 10),
+                // Link field
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'https://a10th.app/minyan/abc123',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.content_copy,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // QR Code section
+                Text(
+                  'Or Share QR Code',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.qr_code_2,
+                      size: 100,
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Action buttons
+                Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        'https://a10th.app/minyan/abc123',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface,
+                      child: OutlinedButton.icon(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
+                        icon: const Icon(Icons.share, size: 18),
+                        label: const Text(
+                          'Share Link',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.content_copy,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.primary,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.image, size: 18),
+                        label: const Text(
+                          'Share QR',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              // QR Code placeholder
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAE8D8),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.qr_code_2,
-                        size: 80,
-                        color: Colors.grey[300],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      child: const Text('Share Link'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      child: const Text('Share QR Code'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Bottom navigation
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildBottomNavIcon(Icons.location_on, 'Map', true),
-                  _buildBottomNavIcon(Icons.notifications, 'Notifications', false),
-                  _buildBottomNavIcon(Icons.settings, 'Settings', false),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

@@ -7,9 +7,7 @@ import 'package:yad_app/config/service_locator.dart';
 import 'package:yad_app/config/theme.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
-import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
-import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
 import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
 
 class HomePage extends StatefulWidget {
