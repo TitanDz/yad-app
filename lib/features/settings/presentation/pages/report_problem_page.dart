@@ -31,154 +31,180 @@ class _ReportAProblemPageState extends State<ReportAProblemPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Report a Problem',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+    return Column(
+      children: [
+        AppBar(
+          elevation: 0,
+          backgroundColor: AppTheme.celestial,
+          leading: IconButton(
+            icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () => context.pop(),
+          ),
+          title: const Text(
+            'Report a Problem',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // What is the issue? Section
-              Text(
-                'What is the issue?',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Issue Options
-              _buildIssueOption(
-                title: 'Incorrect Information',
-                isSelected: _selectedIssue == 'Incorrect Information',
-                context: context,
-                onTap: () {
-                  setState(() => _selectedIssue = 'Incorrect Information');
-                },
-              ),
-              const SizedBox(height: 12),
-
-              _buildIssueOption(
-                title: 'Inappropriate Content',
-                isSelected: _selectedIssue == 'Inappropriate Content',
-                context: context,
-                onTap: () {
-                  setState(() => _selectedIssue = 'Inappropriate Content');
-                },
-              ),
-              const SizedBox(height: 12),
-
-              _buildIssueOption(
-                title: 'Minyan Did Not Occur',
-                isSelected: _selectedIssue == 'Minyan Did Not Occur',
-                context: context,
-                onTap: () {
-                  setState(() => _selectedIssue = 'Minyan Did Not Occur');
-                },
-              ),
-              const SizedBox(height: 12),
-
-              _buildIssueOption(
-                title: 'Other',
-                isSelected: _selectedIssue == 'Other',
-                context: context,
-                onTap: () {
-                  setState(() => _selectedIssue = 'Other');
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Description Text Field
-              TextField(
-                controller: _descriptionController,
-                maxLines: 6,
-                decoration: InputDecoration(
-                  hintText: 'Describe the issue...',
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Contact Information (Optional)
-              TextField(
-                controller: _contactController,
-                decoration: InputDecoration(
-                  hintText: 'Contact Information (Optional)',
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Submit Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Report submitted successfully!'),
-                        duration: Duration(seconds: 2),
+        Expanded(
+          child: Material(
+            color: AppTheme.celestial,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // What is the issue? Section
+                    Text(
+                      'What\'s the issue?',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
-                    );
-                    context.pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ),
-                  child: const Text(
-                    'Submit Report',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                    const SizedBox(height: 12),
+
+                    // Issue Options
+                    _buildIssueOption(
+                      title: 'Incorrect Information',
+                      isSelected: _selectedIssue == 'Incorrect Information',
+                      context: context,
+                      onTap: () {
+                        setState(() => _selectedIssue = 'Incorrect Information');
+                      },
                     ),
-                  ),
+                    const SizedBox(height: 12),
+
+                    _buildIssueOption(
+                      title: 'Inappropriate Content',
+                      isSelected: _selectedIssue == 'Inappropriate Content',
+                      context: context,
+                      onTap: () {
+                        setState(() => _selectedIssue = 'Inappropriate Content');
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildIssueOption(
+                      title: 'Minyan Did Not Occur',
+                      isSelected: _selectedIssue == 'Minyan Did Not Occur',
+                      context: context,
+                      onTap: () {
+                        setState(() => _selectedIssue = 'Minyan Did Not Occur');
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildIssueOption(
+                      title: 'Other',
+                      isSelected: _selectedIssue == 'Other',
+                      context: context,
+                      onTap: () {
+                        setState(() => _selectedIssue = 'Other');
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Description Text Field
+                    TextField(
+                      controller: _descriptionController,
+                      maxLines: 6,
+                      decoration: InputDecoration(
+                        hintText: 'Describe the issue...',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Contact Information (Optional) - Dropdown style
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: ExpansionTile(
+                        title: const Text(
+                          'Contact Information (Optional)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.expand_more),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: TextField(
+                              controller: _contactController,
+                              decoration: InputDecoration(
+                                hintText: 'Enter your email or phone',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: AppTheme.neutral300),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Submit Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Report submitted successfully!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          context.pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                        ),
+                        child: const Text(
+                          'Submit Report',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -193,12 +219,8 @@ class _ReportAProblemPageState extends State<ReportAProblemPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : Theme.of(context).colorScheme.outlineVariant,
-            width: 1.5,
-          ),
-          borderRadius: BorderRadius.circular(8),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -206,30 +228,28 @@ class _ReportAProblemPageState extends State<ReportAProblemPage> {
             Text(
               title,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             Container(
-              width: 20,
-              height: 20,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: isSelected ? AppTheme.primary : Colors.transparent,
                 border: Border.all(
-                  color: isSelected ? AppTheme.primary : Theme.of(context).colorScheme.outlineVariant,
+                  color: isSelected ? AppTheme.primary : AppTheme.neutral300,
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppTheme.primary,
-                        ),
+                  ? const Center(
+                      child: Icon(
+                        Icons.check,
+                        size: 14,
+                        color: Colors.white,
                       ),
                     )
                   : null,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yad_app/config/theme.dart';
 
 class HelpCenterPage extends StatefulWidget {
   const HelpCenterPage({super.key});
@@ -25,164 +26,164 @@ class _HelpCenterPageState extends State<HelpCenterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Help Center',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+    return Column(
+      children: [
+        AppBar(
+          elevation: 0,
+          backgroundColor: AppTheme.celestial,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () => context.pop(),
+          ),
+          title: const Text(
+            'Help Center',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Search Bar
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search for answers',
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
+        Expanded(
+          child: Material(
+            color: AppTheme.celestial,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Search Bar
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search...',
+                            filled: true,
+                            fillColor: Colors.white,
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 28),
 
-              // Categories Section
-              Text(
-                'Categories',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 16),
+                    // Categories Section Title
+                    Text(
+                      'Categories',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
 
-              // Categories Grid
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildCategoryCard(
-                      icon: Icons.person,
-                      title: 'Account',
+                    // Categories Grid
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildCategoryCard(
+                          icon: Icons.person,
+                          title: 'Account',
+                          onTap: () {},
+                        ),
+                        _buildCategoryCard(
+                          icon: Icons.search,
+                          title: 'Finding\nMinyanim',
+                          onTap: () {},
+                        ),
+                        _buildCategoryCard(
+                          icon: Icons.add,
+                          title: 'Creating\nMinyanim',
+                          onTap: () {},
+                        ),
+                        _buildCategoryCard(
+                          icon: Icons.settings,
+                          title: 'Troubleshoot',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Frequently Asked Questions Section
+                    Text(
+                      'Frequently Asked Questions',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // FAQ Items
+                    _buildFAQItem(
+                      title: 'Account Settings',
+                      subtitle: 'Learn how to manage your profile and settings.',
                       onTap: () {},
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildCategoryCard(
-                      icon: Icons.search,
-                      title: 'Finding\nMinyanim',
-                      onTap: () {},
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildCategoryCard(
-                      icon: Icons.add,
-                      title: 'Creating\nMinyanim',
+                    _buildFAQItem(
+                      title: 'Finding Minyanim',
+                      subtitle: 'Find Minyanim near you or in specific locations.',
                       onTap: () {},
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildCategoryCard(
-                      icon: Icons.build,
-                      title: 'Troubleshoot',
-                      onTap: () {},
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
+                    const SizedBox(height: 12),
 
-              // Frequently Asked Questions Section
-              Text(
-                'Frequently Asked Questions',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
+                    _buildFAQItem(
+                      title: 'Creating Minyanim',
+                      subtitle: 'Create and manage your own Minyanim.',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildFAQItem(
+                      title: 'Troubleshooting',
+                      subtitle: 'Troubleshoot common issues and errors.',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Contact Us Section
+                    Text(
+                      'Contact Us',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildFAQItem(
+                      title: 'Email Support',
+                      subtitle: 'Immediately assistance via email',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // FAQ Items
-              _buildFAQItem(
-                title: 'Account Settings',
-                subtitle: 'Learn how to manage your profile and settings.',
-                onTap: () {},
-              ),
-              const SizedBox(height: 16),
-
-              _buildFAQItem(
-                title: 'Finding Minyanim',
-                subtitle: 'Find Minyanim near you or in specific locations.',
-                onTap: () {},
-              ),
-              const SizedBox(height: 16),
-
-              _buildFAQItem(
-                title: 'Creating Minyanim',
-                subtitle: 'Create and manage your own Minyanim.',
-                onTap: () {},
-              ),
-              const SizedBox(height: 16),
-
-              _buildFAQItem(
-                title: 'Troubleshooting',
-                subtitle: 'Troubleshoot common issues and errors.',
-                onTap: () {},
-              ),
-              const SizedBox(height: 32),
-
-              // Contact Us Section
-              Text(
-                'Contact Us',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildContactItem(
-                title: 'Email Support',
-                onTap: () {},
-              ),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -193,28 +194,37 @@ class _HelpCenterPageState extends State<HelpCenterPage> {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(8),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        ),
+      child: SizedBox(
+        width: 70,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: Theme.of(context).colorScheme.primary,
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.primary,
+              ),
+              child: Center(
+                child: Icon(
+                  icon,
+                  size: 28,
+                  color: Colors.white,
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurface,
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 40,
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
           ],
@@ -230,67 +240,47 @@ class _HelpCenterPageState extends State<HelpCenterPage> {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContactItem({
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.onSurface,
+            const SizedBox(width: 12),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppTheme.primary,
             ),
-          ),
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
