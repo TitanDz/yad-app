@@ -24,11 +24,19 @@ class _HomePageState extends State<HomePage> {
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
   bool _showSearchResults = false;
+  late MinyanBloc _minyanBloc;
+  late HomeBloc _homeBloc;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
+    // Initialize MinyanBloc once and reuse it
+    _minyanBloc = getIt<MinyanBloc>();
+    // Initialize HomeBloc once and reuse it
+    _homeBloc = getIt<HomeBloc>();
+    // Add initialization event to HomeBloc only once
+    _homeBloc.add(const InitializeMapEvent());
   }
 
   @override
@@ -36,6 +44,7 @@ class _HomePageState extends State<HomePage> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _mapController?.dispose();
+    // Don't dispose _minyanBloc here as it's managed by service locator
     super.dispose();
   }
 
@@ -69,7 +78,7 @@ class _HomePageState extends State<HomePage> {
       height: 50,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isSelected ? Colors.white : Colors.transparent,
+        color: isSelected ? const Color(0xFFC9DDFC) : Colors.transparent,
       ),
       child: Center(
         child: SvgPicture.asset(
@@ -394,7 +403,7 @@ class _HomePageState extends State<HomePage> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: AppTheme.celestial,
+            color: const Color(0xFFF3F4F8),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(28),
               topRight: Radius.circular(28),
@@ -438,22 +447,27 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: _selectedIndex == 0
           ? Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  context.push('/create-minyan');
-                },
-                backgroundColor: AppTheme.primary,
-                label: const Text(
-                  'Create Minyan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width - 32,
+                child: ElevatedButton(
+                  onPressed: () {
+                    context.push('/create-minyan');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
                   ),
-                ),
-                icon: const Icon(
-                  Icons.add,
-                  color: Colors.white,
+                  child: const Text(
+                    'Create Minyan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
             )
@@ -467,63 +481,72 @@ class _HomePageState extends State<HomePage> {
       // Map view
       return Column(
         children: [
-          // Top Header Bar (Avatar, Title, Settings)
-          SafeArea(
-            bottom: false,
-            left: true,
-            right: true,
-            top: true,
-            child: Container(
-              color: Theme.of(context).colorScheme.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Avatar
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(8),
+          // Top Header Bar (Avatar, Title, Settings) - Extends to top
+          Container(
+            color: AppTheme.primary,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(
+              children: [
+                // Status bar spacing
+                SizedBox(height: MediaQuery.of(context).padding.top),
+                // Header content
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.person,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      size: 24,
+                    // Title
+                    Text(
+                      'The10th',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 1.5,
+                      ),
                     ),
-                  ),
-                  // Title
-                  Text(
-                    'YAD-YAD',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      letterSpacing: 1.5,
+                    // Settings Button
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.settings,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        onPressed: () {
+                          context.push('/settings');
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
                     ),
-                  ),
-                  // Settings Button
-                  IconButton(
-                    icon: Icon(
-                      Icons.settings,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: 24,
-                    ),
-                    onPressed: () {
-                      context.push('/settings');
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
           // Divider
           Container(
-            height: 1,
-            color: Theme.of(context).colorScheme.outlineVariant,
+            height: 0,
+            color: Colors.transparent,
           ),
           // Map and Overlay
           Expanded(
@@ -548,19 +571,44 @@ class _HomePageState extends State<HomePage> {
                           ? LatLng(userLocation.latitude, userLocation.longitude)
                           : const LatLng(40.7128, -74.0060);
 
-                      return GoogleMap(
-                        onMapCreated: _onMapCreated,
-                        initialCameraPosition: CameraPosition(
-                          target: initialPosition,
-                          zoom: 15.0,
-                        ),
-                        markers: state.markers,
-                        myLocationEnabled: false,
-                        myLocationButtonEnabled: false,
-                        zoomControlsEnabled: false,
-                        style: Theme.of(context).brightness == Brightness.dark
-                            ? _getDarkMapStyle()
-                            : null,
+                      return Stack(
+                        children: [
+                          GoogleMap(
+                            onMapCreated: _onMapCreated,
+                            initialCameraPosition: CameraPosition(
+                              target: initialPosition,
+                              zoom: 15.0,
+                            ),
+                            markers: state.markers,
+                            myLocationEnabled: false,
+                            myLocationButtonEnabled: false,
+                            zoomControlsEnabled: false,
+                            style: Theme.of(context).brightness == Brightness.dark
+                                ? _getDarkMapStyle()
+                                : null,
+                          ),
+                          // Gradient overlay from header to map
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 150,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    AppTheme.primary,
+                                    AppTheme.primary.withValues(alpha: 0.4),
+                                    Colors.transparent,
+                                  ],
+                                  stops: const [0.0, 0.6, 1.0],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     }
 
@@ -688,8 +736,8 @@ class _HomePageState extends State<HomePage> {
       );
     } else if (_selectedIndex == 1) {
       // Minyan view
-      return BlocProvider<MinyanBloc>(
-        create: (context) => getIt<MinyanBloc>()..add(const LoadMyMinyansEvent()),
+      return BlocProvider<MinyanBloc>.value(
+        value: _minyanBloc,
         child: const MinyanPage(),
       );
     } else if (_selectedIndex == 2) {

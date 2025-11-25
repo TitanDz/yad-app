@@ -1164,7 +1164,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'https://yad-yad.app/minyan/abc123',
+                        'https://a10th.app/minyan/abc123',
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).colorScheme.onSurface,

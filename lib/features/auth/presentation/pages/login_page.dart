@@ -88,13 +88,13 @@ class _LoginPageState extends State<LoginPage> {
                         children: [
                           const SizedBox(height: 16),
 
-                        // Header Row: Minyan Connect (centered) and Help Icon
+                        // Header Row: The10th (centered) and Help Icon
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
                               child: Text(
-                                'Minyan Connect',
+                                'The10th',
                                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w500,
@@ -193,6 +193,21 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
+                        if (_emailError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 16),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                _emailError!,
+                                style: TextStyle(
+                                  color: AppTheme.error,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 16),
 
                         // Password Field
@@ -270,6 +285,21 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
+                        if (_passwordError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 16),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                _passwordError!,
+                                style: TextStyle(
+                                  color: AppTheme.error,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 16),
 
                         // Forgot Password Link

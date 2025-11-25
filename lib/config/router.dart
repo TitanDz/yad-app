@@ -69,9 +69,8 @@ class AppRouter {
       ),
       GoRoute(
         path: home,
-        builder: (context, state) => BlocProvider<HomeBloc>(
-          create: (context) => getIt<HomeBloc>()
-            ..add(const InitializeMapEvent()),
+        builder: (context, state) => BlocProvider<HomeBloc>.value(
+          value: getIt<HomeBloc>(),
           child: const HomePage(),
         ),
         routes: [
@@ -125,15 +124,15 @@ class AppRouter {
       ),
       GoRoute(
         path: login,
-        builder: (context, state) => BlocProvider<AuthBloc>(
-          create: (context) => getIt<AuthBloc>(),
+        builder: (context, state) => BlocProvider<AuthBloc>.value(
+          value: getIt<AuthBloc>(),
           child: const LoginPage(),
         ),
       ),
       GoRoute(
         path: register,
-        builder: (context, state) => BlocProvider<AuthBloc>(
-          create: (context) => getIt<AuthBloc>(),
+        builder: (context, state) => BlocProvider<AuthBloc>.value(
+          value: getIt<AuthBloc>(),
           child: const RegisterPage(),
         ),
       ),

@@ -1,11 +1,15 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
+import 'dart:async';
 import 'package:yad_app/features/home/data/datasources/location_service.dart';
 import 'package:yad_app/features/home/data/repositories/place_repository.dart';
 import 'package:yad_app/features/home/domain/entities/place.dart';
 import 'package:yad_app/features/home/domain/entities/user_location.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
+import 'package:yad_app/config/theme.dart';
 
 // Events
 abstract class HomeEvent extends Equatable {
@@ -206,7 +210,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       }).toSet();
 
       // Add current location marker
-      final updatedMarkers = _addCurrentLocationMarker(
+      final updatedMarkers = await _addCurrentLocationMarker(
         placeMarkers,
         userLocation,
       );
@@ -237,7 +241,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final newMarkers = _createMarkersFromPlaces(results);
 
       // Add current location marker if available
-      final updatedMarkers = _addCurrentLocationMarker(
+      final updatedMarkers = await _addCurrentLocationMarker(
         newMarkers,
         currentState.userLocation,
       );
@@ -265,7 +269,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final newMarkers = _createMarkersFromPlaces(results);
 
       // Add current location marker if available
-      final updatedMarkers = _addCurrentLocationMarker(
+      final updatedMarkers = await _addCurrentLocationMarker(
         newMarkers,
         currentState.userLocation,
       );
@@ -288,7 +292,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final currentState = state as HomeMapReady;
 
     try {
-      final updatedMarkers = _updateMarkerForPlace(
+      final updatedMarkers = await _updateMarkerForPlace(
         currentState.markers,
         event.place,
         currentState.userLocation,
@@ -313,7 +317,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final userLocation = await _locationService.getCurrentLocation();
       if (userLocation != null) {
         final currentState = state as HomeMapReady;
-        final updatedMarkers = _addCurrentLocationMarker(
+        final updatedMarkers = await _addCurrentLocationMarker(
           currentState.markers,
           userLocation,
         );
@@ -344,7 +348,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     if (state is! HomeMapReady) return;
 
     final currentState = state as HomeMapReady;
-    final markers = _addCurrentLocationMarker(
+    final markers = await _addCurrentLocationMarker(
       {},
       currentState.userLocation,
     );
@@ -374,16 +378,54 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }).toSet();
   }
 
-  Set<Marker> _addCurrentLocationMarker(
+  Future<BitmapDescriptor> _createCustomLocationMarker() async {
+    final size = 150;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    // Draw outer circle (darker blue)
+    final paint = Paint()
+      ..color = const Color(0xFF6B7FD6).withValues(alpha: 0.6)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(size / 2, size / 2), size / 2, paint);
+
+    // Draw middle circle (medium blue)
+    final middlePaint = Paint()
+      ..color = AppTheme.primary.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(size / 2, size / 2), size / 2.5, middlePaint);
+
+    // Draw inner circle (darker blue)
+    final innerPaint = Paint()
+      ..color = const Color(0xFF4D41DE)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(size / 2, size / 2), size / 4, innerPaint);
+
+    // Draw center white dot
+    final whitePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(size / 2, size / 2), size / 8, whitePaint);
+
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(size, size);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+  }
+
+  Future<Set<Marker>> _addCurrentLocationMarker(
     Set<Marker> markers,
     UserLocation? userLocation,
-  ) {
+  ) async {
     if (userLocation == null) return markers;
 
     final updatedMarkers = Set<Marker>.from(markers);
     updatedMarkers.removeWhere(
       (marker) => marker.markerId.value == 'current_location',
     );
+
+    // Create custom marker
+    final customIcon = await _createCustomLocationMarker();
 
     updatedMarkers.add(
       Marker(
@@ -393,25 +435,22 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           userLocation.longitude,
         ),
         infoWindow: const InfoWindow(title: 'Your Location'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueRed,
-        ),
+        icon: customIcon,
       ),
     );
 
     return updatedMarkers;
   }
 
-  Set<Marker> _updateMarkerForPlace(
+  Future<Set<Marker>> _updateMarkerForPlace(
     Set<Marker> markers,
     Place place,
     UserLocation? userLocation,
-  ) {
+  ) async {
     final updatedMarkers = _createMarkersFromPlaces([place]);
-    return _addCurrentLocationMarker(updatedMarkers, userLocation);
+    return await _addCurrentLocationMarker(updatedMarkers, userLocation);
   }
 
-  /// Load both minyanim and synagogues on the map
   Future<void> _onLoadPrayerLocations(
     LoadPrayerLocationsEvent event,
     Emitter<HomeState> emit,
@@ -442,7 +481,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
       // Note: Minyanim would be loaded from MinyanBloc in a real scenario
       // For now, we're demonstrating the structure
-      final updatedMarkers = _addCurrentLocationMarker(
+      final updatedMarkers = await _addCurrentLocationMarker(
         placeMarkers,
         currentState.userLocation,
       );

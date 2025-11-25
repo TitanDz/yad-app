@@ -43,7 +43,7 @@ class AboutPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Minyan Connect is dedicated to fostering a stronger Jewish community by making it easier for individuals to find and participate in prayer services.',
+                      'The10th is dedicated to fostering a stronger Jewish community by making it easier for individuals to find and participate in prayer services.',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
@@ -74,7 +74,7 @@ class AboutPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Minyan Connect was developed by a passionate team of individuals committed to enhancing Jewish life through technology. Our team includes experienced developers, community leaders, and dedicated volunteers.',
+                      'The10th was developed by a passionate team of individuals committed to enhancing Jewish life through technology. Our team includes experienced developers, community leaders, and dedicated volunteers.',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
@@ -120,7 +120,7 @@ class AboutPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'At Minyan Connect, we prioritize your privacy. We collect minimal data necessary for app functionality, such as location for minyan searches. Your data is securely stored and never shared with third parties without your explicit consent. We employ industry-standard security measures to protect your information. For detailed information, please refer to our full Privacy Policy.',
+                      'At The10th, we prioritize your privacy. We collect minimal data necessary for app functionality, such as location for minyan searches. Your data is securely stored and never shared with third parties without your explicit consent. We employ industry-standard security measures to protect your information. For detailed information, please refer to our full Privacy Policy.',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w400,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yad_app/config/router.dart';
+import 'package:yad_app/config/theme.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -24,199 +25,197 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-            const SizedBox(height: 24),
-
-            // Profile Avatar - Centered
-            Center(
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFFAE5D3),
-                  border: Border.all(
-                    color: const Color(0xFFE8C7A0),
-                    width: 2,
-                  ),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 110,
-                    height: 110,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFFAE5D3),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 60,
-                      color: Color(0xFF8B6F47),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // User Info Section - Centered
-            Center(
+          child: Material(
+            color: AppTheme.purity,
+            child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Name
-                  const Text(
-                    'Ethan',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 24),
 
-                  // Member Since
-                  Text(
-                    'Member since 2022',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  // Profile Avatar - Centered
+                  Center(
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.celestial.withValues(alpha: 0.2),
+                        border: Border.all(
+                          color: AppTheme.celestial.withValues(alpha: 0.4),
+                          width: 2,
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.person,
+                          size: 60,
+                          color: AppTheme.primary,
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // User Info Section - Centered
+                  Center(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Name
+                        const Text(
+                          'Ethan',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Member Since
+                        Text(
+                          'Member since 2022',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Personal Information Section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Personal Information',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Email
+                        _buildInfoItem(
+                          label: 'Email',
+                          value: 'ethan@email.com',
+                          context: context,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Phone Number
+                        _buildInfoItem(
+                          label: 'Phone Number',
+                          value: '+1 (555) 123-4567',
+                          context: context,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Location
+                        _buildInfoItem(
+                          label: 'Location',
+                          value: 'New York, NY',
+                          context: context,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Community Section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Community',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Synagogue
+                        _buildInfoItem(
+                          label: 'Synagogue',
+                          value: 'Congregation Beth Shalom',
+                          context: context,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Denomination
+                        _buildInfoItem(
+                          label: 'Denomination',
+                          value: 'Orthodox',
+                          context: context,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Settings Section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Settings',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Notifications
+                        _buildSettingItem(
+                          label: 'Notifications',
+                          onTap: () {
+                            context.push(AppRouter.notifications);
+                          },
+                          context: context,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Privacy
+                        _buildSettingItem(
+                          label: 'Privacy',
+                          onTap: () {
+                            // TODO: Navigate to privacy settings
+                          },
+                          context: context,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Minyan History
+                        _buildSettingItem(
+                          label: 'Minyan History',
+                          onTap: () {
+                            // TODO: Navigate to minyan history
+                          },
+                          context: context,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-
-            // Personal Information Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Personal Information',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Email
-                  _buildInfoItem(
-                    label: 'Email',
-                    value: 'ethan@email.com',
-                    context: context,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Phone Number
-                  _buildInfoItem(
-                    label: 'Phone Number',
-                    value: '+1 (555) 123-4567',
-                    context: context,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Location
-                  _buildInfoItem(
-                    label: 'Location',
-                    value: 'New York, NY',
-                    context: context,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Community Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Community',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Synagogue
-                  _buildInfoItem(
-                    label: 'Synagogue',
-                    value: 'Congregation Beth Shalom',
-                    context: context,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Denomination
-                  _buildInfoItem(
-                    label: 'Denomination',
-                    value: 'Orthodox',
-                    context: context,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Settings Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Settings',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Notifications
-                  _buildSettingItem(
-                    label: 'Notifications',
-                    onTap: () {
-                      context.push(AppRouter.notifications);
-                    },
-                    context: context,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Privacy
-                  _buildSettingItem(
-                    label: 'Privacy',
-                    onTap: () {
-                      // TODO: Navigate to privacy settings
-                    },
-                    context: context,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Minyan History
-                  _buildSettingItem(
-                    label: 'Minyan History',
-                    onTap: () {
-                      // TODO: Navigate to minyan history
-                    },
-                    context: context,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
           ),
-        ),
         ),
       ],
     );
@@ -235,7 +234,7 @@ class ProfilePage extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Theme.of(context).colorScheme.onSurface,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 4),
@@ -259,10 +258,10 @@ class ProfilePage extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(8),
+          color: AppTheme.celestial.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -270,7 +269,7 @@ class ProfilePage extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
@@ -278,7 +277,7 @@ class ProfilePage extends StatelessWidget {
             Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: AppTheme.primary,
             ),
           ],
         ),

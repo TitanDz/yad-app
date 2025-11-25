@@ -25,7 +25,11 @@ class _MinyanPageState extends State<MinyanPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChange);
-    context.read<MinyanBloc>().add(const LoadMyMinyansEvent());
+    // Only load if not already loaded
+    final bloc = context.read<MinyanBloc>();
+    if (bloc.state is! MyMinyanLoaded && bloc.state is! NearbyMinyanLoaded) {
+      bloc.add(const LoadMyMinyansEvent());
+    }
   }
 
   @override
@@ -74,7 +78,12 @@ class _MinyanPageState extends State<MinyanPage>
             Icons.arrow_back,
             color: Theme.of(context).colorScheme.onSurface,
           ),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            // For tab-based navigation, pop the Minyan page back to previous tab
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
         ),
         title: Text(
           'Minyanim',

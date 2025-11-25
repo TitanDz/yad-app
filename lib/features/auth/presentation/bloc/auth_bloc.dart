@@ -27,7 +27,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       emit(AuthRegistrationSuccess(user));
     } catch (e) {
-      emit(AuthFailure(e.toString()));
+      // Provide user-friendly error messages
+      final errorMessage = _getErrorMessage(e);
+      emit(AuthFailure(errorMessage));
     }
   }
 
@@ -44,7 +46,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Emit a new state that includes phone number for OTP
       emit(AuthLoginSuccess(user, event.email));
     } catch (e) {
-      emit(AuthFailure(e.toString()));
+      // Provide user-friendly error messages
+      final errorMessage = _getErrorMessage(e);
+      emit(AuthFailure(errorMessage));
     }
   }
 
@@ -57,7 +61,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await repository.logout();
       emit(const AuthUnauthenticated());
     } catch (e) {
-      emit(AuthFailure(e.toString()));
+      // Provide user-friendly error messages
+      final errorMessage = _getErrorMessage(e);
+      emit(AuthFailure(errorMessage));
     }
   }
 
@@ -67,5 +73,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     // TODO: Implement check status logic (check cached token, refresh token, etc.)
     emit(const AuthUnauthenticated());
+  }
+
+  /// Convert exception to user-friendly error message
+  String _getErrorMessage(Object error) {
+    final errorString = error.toString();
+    
+    // Handle specific error messages
+    if (errorString.contains('Invalid email or password')) {
+      return 'Invalid email or password. Please try again.';
+    } else if (errorString.contains('NetworkException') || errorString.contains('SocketException')) {
+      return 'Network error. Please check your internet connection.';
+    } else if (errorString.contains('TimeoutException')) {
+      return 'Request timed out. Please try again.';
+    } else if (errorString.contains('User not found')) {
+      return 'This account does not exist. Please sign up first.';
+    } else if (errorString.contains('Password')) {
+      return 'Incorrect password. Please try again.';
+    }
+    
+    // Default fallback message
+    return 'An error occurred. Please try again.';
   }
 }

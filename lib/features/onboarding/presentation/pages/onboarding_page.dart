@@ -160,32 +160,59 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Go Back Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: OutlinedButton(
-                      onPressed: _currentPage > 0 ? _previousPage : _skipOnboarding,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.divinity.withValues(alpha: 0.5),
-                        side: BorderSide(
-                          color: AppTheme.divinity.withValues(alpha: 0.3),
-                          width: 1.5,
+                  // Go Back Button - Hidden on first screen
+                  if (_currentPage > 0)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: OutlinedButton(
+                        onPressed: _previousPage,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.divinity.withValues(alpha: 0.5),
+                          side: BorderSide(
+                            color: AppTheme.divinity.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
+                        child: Text(
+                          'Go Back',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.divinity.withValues(alpha: 0.5),
+                          ),
                         ),
                       ),
-                      child: Text(
-                        'Go Back',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.divinity.withValues(alpha: 0.5),
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: OutlinedButton(
+                        onPressed: _skipOnboarding,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.divinity.withValues(alpha: 0.5),
+                          side: BorderSide(
+                            color: AppTheme.divinity.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                        ),
+                        child: Text(
+                          'Skip',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.divinity.withValues(alpha: 0.5),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -211,7 +238,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   children: [
                     Text(
                       screen.title,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         color: AppTheme.divinity,
                         fontWeight: FontWeight.bold,
                         height: 1.3,
@@ -230,32 +257,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                // Page Indicator
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    screens.length,
-                    (index) => Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: index == _currentPage
-                            ? AppTheme.divinity
-                            : AppTheme.divinity.withValues(alpha: 0.2),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
                 // Illustration
                 if (screen.showPermissions)
                   _buildPermissionsContent()
+                else if (_currentPage == 0)
+                  SvgPicture.asset(
+                    screen.illustration,
+                    width: 358.25,
+                    height: 462.2,
+                    fit: BoxFit.contain,
+                  )
+                else if (_currentPage == 1 || _currentPage == 2)
+                  SvgPicture.asset(
+                    screen.illustration,
+                    width: 358.25,
+                    height: 462.2,
+                    fit: BoxFit.contain,
+                  )
                 else
                   SvgPicture.asset(
                     screen.illustration,
-                    height: 280,
+                    width: 358.25,
+                    height: 462.2,
                     fit: BoxFit.contain,
                   ),
                 const SizedBox(height: 80),
@@ -369,7 +392,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
         // Illustration for permissions
         SvgPicture.asset(
           'assets/images/illustrations/Group 77.svg',
-          height: 200,
+          width: 280,
+          height: 280,
           fit: BoxFit.contain,
         ),
       ],

@@ -265,7 +265,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
       notif_entity.Notification(
         id: '5',
         title: 'App Update',
-        message: 'Yad-Yad version 2.0.1 is now available with bug fixes and improvements',
+        message: 'A10th version 2.0.1 is now available with bug fixes and improvements',
         type: 'announcement',
         timestamp: now.subtract(const Duration(hours: 4)),
         isRead: true,

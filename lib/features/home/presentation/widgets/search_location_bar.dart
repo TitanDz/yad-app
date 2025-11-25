@@ -45,7 +45,7 @@ class _SearchLocationBarState extends State<SearchLocationBar> {
     return Container(
       decoration: BoxDecoration(
         color: containerColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: borderColor,
           width: 1.5,
