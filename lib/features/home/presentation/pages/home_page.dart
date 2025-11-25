@@ -9,6 +9,9 @@ import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
 import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -21,9 +24,11 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
-  bool _showSearchResults = false;
   late MinyanBloc _minyanBloc;
   late HomeBloc _homeBloc;
+  List<Map<String, dynamic>> _autocompleteResults = [];
+  bool _isLoadingAutocomplete = false;
+  Timer? _autocompleteDebounceTimer;
 
   @override
   void initState() {
@@ -42,27 +47,156 @@ class _HomePageState extends State<HomePage> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _mapController?.dispose();
+    _autocompleteDebounceTimer?.cancel();
     // Don't dispose _minyanBloc here as it's managed by service locator
     super.dispose();
   }
 
   void _onSearchChanged() {
-    setState(() {
-      _showSearchResults = _searchController.text.isNotEmpty;
-    });
-    if (_searchController.text.isNotEmpty) {
-      context.read<HomeBloc>().add(
-            SearchPlacesEvent(_searchController.text),
-          );
-    }
+    // Removed - using Google Places API autocomplete instead
   }
 
   void _onClearSearch() {
     _searchController.clear();
     setState(() {
-      _showSearchResults = false;
+      _autocompleteResults = [];
     });
     context.read<HomeBloc>().add(const ClearSearchEvent());
+  }
+
+  Future<void> _fetchAutocompleteResults(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _autocompleteResults = [];
+        _isLoadingAutocomplete = false;
+      });
+      return;
+    }
+
+    const apiKey = 'AIzaSyD1_mZtNCy3Rbb-qD4sQQtUKd25VzdF8hI';
+    const sessionToken = 'session_token';
+
+    try {
+      final String url =
+          'https://maps.googleapis.com/maps/api/place/autocomplete/json'
+          '?input=${Uri.encodeComponent(query)}'
+          '&components=country:us'
+          '&key=$apiKey'
+          '&sessiontoken=$sessionToken';
+
+      final response = await http.get(Uri.parse(url)).timeout(
+        const Duration(seconds: 5),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final status = json['status'] as String?;
+
+        if (status == 'OK') {
+          final predictions = json['predictions'] as List<dynamic>? ?? [];
+          final results = <Map<String, dynamic>>[];
+
+          for (var i = 0; i < predictions.length && i < 5; i++) {
+            final prediction = predictions[i] as Map<String, dynamic>;
+            final placeId = prediction['place_id'] as String?;
+            final structuredFormatting = prediction['structured_formatting'] as Map<String, dynamic>?;
+            final mainText = structuredFormatting?['main_text'] as String?;
+            final secondaryText = structuredFormatting?['secondary_text'] as String?;
+
+            if (placeId != null && mainText != null) {
+              results.add({
+                'name': mainText,
+                'address': secondaryText ?? '',
+                'placeId': placeId,
+              });
+            }
+          }
+
+          if (mounted) {
+            setState(() {
+              _autocompleteResults = results;
+              _isLoadingAutocomplete = false;
+            });
+          }
+        } else if (status == 'ZERO_RESULTS') {
+          if (mounted) {
+            setState(() {
+              _autocompleteResults = [];
+              _isLoadingAutocomplete = false;
+            });
+          }
+        } else {
+          debugPrint('API Error: ${json['error_message'] ?? status}');
+          if (mounted) {
+            setState(() => _isLoadingAutocomplete = false);
+          }
+        }
+      } else {
+        debugPrint('HTTP Error: ${response.statusCode}');
+        if (mounted) {
+          setState(() => _isLoadingAutocomplete = false);
+        }
+      }
+    } on TimeoutException {
+      debugPrint('API request timeout');
+      if (mounted) {
+        setState(() => _isLoadingAutocomplete = false);
+      }
+    } catch (e) {
+      debugPrint('Error fetching autocomplete: $e');
+      if (mounted) {
+        setState(() => _isLoadingAutocomplete = false);
+      }
+    }
+  }
+
+  Future<void> _selectAutocompleteResult(String placeId, String name) async {
+    const apiKey = 'AIzaSyD1_mZtNCy3Rbb-qD4sQQtUKd25VzdF8hI';
+
+    try {
+      final String url =
+          'https://maps.googleapis.com/maps/api/place/details/json'
+          '?place_id=$placeId'
+          '&fields=geometry,formatted_address'
+          '&key=$apiKey';
+
+      final response = await http.get(Uri.parse(url)).timeout(
+        const Duration(seconds: 5),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final result = json['result'] as Map<String, dynamic>?;
+
+        if (result != null) {
+          final geometry = result['geometry'] as Map<String, dynamic>?;
+          final location = geometry?['location'] as Map<String, dynamic>?;
+
+          if (location != null && _mapController != null) {
+            final lat = location['lat'] as double;
+            final lng = location['lng'] as double;
+
+            // Animate camera to selected location
+            _mapController!.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: LatLng(lat, lng),
+                  zoom: 17.0,
+                ),
+              ),
+            );
+
+            // Clear search
+            _searchController.clear();
+            setState(() {
+              _autocompleteResults = [];
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error selecting autocomplete result: $e');
+    }
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -643,90 +777,425 @@ class _HomePageState extends State<HomePage> {
                   top: 12,
                   left: 16,
                   right: 16,
-                  child: SearchLocationBar(
-                    controller: _searchController,
-                    onSearch: (query) {},
-                    onClear: _onClearSearch,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SearchLocationBar(
+                        controller: _searchController,
+                        onSearch: (query) {
+                          // Cancel previous timer
+                          _autocompleteDebounceTimer?.cancel();
+
+                          if (query.isEmpty) {
+                            setState(() {
+                              _autocompleteResults = [];
+                              _isLoadingAutocomplete = false;
+                            });
+                            return;
+                          }
+
+                          // Show loading state immediately
+                          if (!_isLoadingAutocomplete) {
+                            setState(() => _isLoadingAutocomplete = true);
+                          }
+
+                          // Debounce API call by 300ms
+                          _autocompleteDebounceTimer = Timer(
+                            const Duration(milliseconds: 300),
+                            () => _fetchAutocompleteResults(query),
+                          );
+                        },
+                        onClear: _onClearSearch,
+                      ),
+                      // Autocomplete dropdown with loading state
+                      if (_isLoadingAutocomplete)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: SizedBox(
+                            height: 40,
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (_autocompleteResults.isEmpty && _searchController.text.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.location_off,
+                                size: 20,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'No locations found',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (_autocompleteResults.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          constraints: const BoxConstraints(maxHeight: 200),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: _autocompleteResults.length,
+                            itemBuilder: (context, index) {
+                              final result = _autocompleteResults[index];
+                              return InkWell(
+                                onTap: () => _selectAutocompleteResult(
+                                  result['placeId'] as String,
+                                  result['name'] as String,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    border: index < _autocompleteResults.length - 1
+                                        ? Border(
+                                            bottom: BorderSide(
+                                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.location_on,
+                                        size: 18,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              result['name'] as String,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Theme.of(context).colorScheme.onSurface,
+                                              ),
+                                            ),
+                                            if ((result['address'] as String).isNotEmpty)
+                                              Text(
+                                                result['address'] as String,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
                   ),
                 ),
 
-                // Search Results Sheet
-                if (_showSearchResults)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: BlocBuilder<HomeBloc, HomeState>(
-                      builder: (context, state) {
-                        if (state is HomeMapReady) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(20),
-                                topRight: Radius.circular(20),
+                // Map controls (Zoom + Current Location)
+                Positioned(
+                  bottom: 100,
+                  right: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Zoom In button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              _mapController?.animateCamera(
+                                CameraUpdate.zoomBy(1),
+                              );
+                            },
+                            customBorder: const CircleBorder(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 20,
                               ),
                             ),
-                            child: state.searchResults.isEmpty
-                                ? Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.location_off,
-                                          size: 48,
-                                          color: Theme.of(context).colorScheme.outlineVariant,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'No places found',
-                                          style: TextStyle(
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Zoom Out button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              _mapController?.animateCamera(
+                                CameraUpdate.zoomBy(-1),
+                              );
+                            },
+                            customBorder: const CircleBorder(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(
+                                Icons.remove,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Current Location button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              // Get current location from BLoC state
+                              final state = context.read<HomeBloc>().state;
+                              if (state is HomeMapReady && state.userLocation != null) {
+                                _mapController?.animateCamera(
+                                  CameraUpdate.newCameraPosition(
+                                    CameraPosition(
+                                      target: LatLng(
+                                        state.userLocation!.latitude,
+                                        state.userLocation!.longitude,
+                                      ),
+                                      zoom: 15.0,
                                     ),
-                                  )
-                                : ListView.builder(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    itemCount: state.searchResults.length,
-                                    itemBuilder: (context, index) {
-                                      final place = state.searchResults[index];
-                                      final isSelected =
-                                          state.selectedPlace?.id == place.id;
-
-                                      return PlaceCard(
-                                        place: place,
-                                        isSelected: isSelected,
-                                        onTap: () {
-                                          context.read<HomeBloc>().add(
-                                                SelectPlaceEvent(place),
-                                              );
-
-                                          _mapController?.animateCamera(
-                                            CameraUpdate.newCameraPosition(
-                                              CameraPosition(
-                                                target: LatLng(
-                                                  place.latitude,
-                                                  place.longitude,
-                                                ),
-                                                zoom: 17.0,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      );
-                                    },
                                   ),
-                          );
-                        }
-                        return const SizedBox();
-                      },
-                    ),
+                                );
+                              }
+                            },
+                            customBorder: const CircleBorder(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(
+                                Icons.my_location,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+
+                // Map controls (Zoom + Current Location)
+                Positioned(
+                  bottom: 100,
+                  right: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Zoom In button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              _mapController?.animateCamera(
+                                CameraUpdate.zoomBy(1),
+                              );
+                            },
+                            customBorder: const CircleBorder(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Zoom Out button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              _mapController?.animateCamera(
+                                CameraUpdate.zoomBy(-1),
+                              );
+                            },
+                            customBorder: const CircleBorder(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(
+                                Icons.remove,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Current Location button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              // Get current location from BLoC state
+                              final state = context.read<HomeBloc>().state;
+                              if (state is HomeMapReady && state.userLocation != null) {
+                                _mapController?.animateCamera(
+                                  CameraUpdate.newCameraPosition(
+                                    CameraPosition(
+                                      target: LatLng(
+                                        state.userLocation!.latitude,
+                                        state.userLocation!.longitude,
+                                      ),
+                                      zoom: 15.0,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            customBorder: const CircleBorder(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(
+                                Icons.my_location,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               ],
             ),
           ),

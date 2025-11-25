@@ -5,12 +5,18 @@ class SearchLocationBar extends StatefulWidget {
   final ValueChanged<String> onSearch;
   final VoidCallback onClear;
   final TextEditingController? controller;
+  final Function(Map<String, dynamic>)? onLocationSelected;
+  final List<Map<String, dynamic>> searchResults;
+  final bool isLoading;
 
   const SearchLocationBar({
     super.key,
     required this.onSearch,
     required this.onClear,
     this.controller,
+    this.onLocationSelected,
+    this.searchResults = const [],
+    this.isLoading = false,
   });
 
   @override
@@ -19,19 +25,34 @@ class SearchLocationBar extends StatefulWidget {
 
 class _SearchLocationBarState extends State<SearchLocationBar> {
   late TextEditingController _controller;
+  bool _hasSearchText = false;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller ?? TextEditingController();
+    _controller.addListener(() {
+      setState(() {
+        _hasSearchText = _controller.text.isNotEmpty;
+      });
+    });
   }
 
   @override
   void dispose() {
+    _controller.removeListener(() {});
     if (widget.controller == null) {
       _controller.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _fetchAutocomplete(String query) async {
+    if (query.isEmpty) {
+      widget.onSearch('');
+      return;
+    }
+    widget.onSearch(query);
   }
 
   @override
@@ -56,8 +77,7 @@ class _SearchLocationBarState extends State<SearchLocationBar> {
       child: TextField(
         controller: _controller,
         onChanged: (value) {
-          setState(() {});
-          widget.onSearch(value);
+          _fetchAutocomplete(value);
         },
         decoration: InputDecoration(
           hintText: 'Search',
@@ -70,7 +90,7 @@ class _SearchLocationBarState extends State<SearchLocationBar> {
             color: iconColor,
             size: 20,
           ),
-          suffixIcon: _controller.text.isNotEmpty
+          suffixIcon: _hasSearchText
               ? IconButton(
                   icon: Icon(
                     Icons.close,
@@ -79,7 +99,9 @@ class _SearchLocationBarState extends State<SearchLocationBar> {
                   ),
                   onPressed: () {
                     _controller.clear();
-                    setState(() {});
+                    setState(() {
+                      _hasSearchText = false;
+                    });
                     widget.onClear();
                   },
                 )
