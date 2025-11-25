@@ -38,18 +38,13 @@ class _SearchLocationBarState extends State<SearchLocationBar> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final containerColor = isDarkMode ? AppTheme.neutral800 : Colors.white;
-    final borderColor = isDarkMode ? AppTheme.neutral600 : AppTheme.primary;
     final iconColor = isDarkMode ? AppTheme.neutral400 : AppTheme.neutral400;
     final hintColor = isDarkMode ? AppTheme.neutral500 : AppTheme.neutral400;
     
     return Container(
       decoration: BoxDecoration(
         color: containerColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: borderColor,
-          width: 1.5,
-        ),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.08),
@@ -65,7 +60,7 @@ class _SearchLocationBarState extends State<SearchLocationBar> {
           widget.onSearch(value);
         },
         decoration: InputDecoration(
-          hintText: 'Search for a location',
+          hintText: 'Search',
           hintStyle: TextStyle(
             color: hintColor,
             fontSize: 14,
@@ -90,6 +85,8 @@ class _SearchLocationBarState extends State<SearchLocationBar> {
                 )
               : null,
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
           filled: false,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 4,
