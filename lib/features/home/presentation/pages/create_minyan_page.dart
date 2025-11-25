@@ -56,11 +56,17 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   final LatLng _mapCenter = const LatLng(40.7128, -74.0060); // Default to NYC
   final Set<Marker> _markers = {};
   List<Map<String, dynamic>> _searchResults = [];
+  bool _hasSearchText = false;
 
   @override
   void initState() {
     super.initState();
     _minyanData = MinyanData();
+    _searchController.addListener(() {
+      setState(() {
+        _hasSearchText = _searchController.text.isNotEmpty;
+      });
+    });
   }
 
   @override
@@ -486,9 +492,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                       child: TextField(
                         controller: _searchController,
                         onChanged: (value) {
-                          setState(() {
-                            _updateSearchResults(value);
-                          });
+                          _updateSearchResults(value);
                         },
                         onSubmitted: (value) {
                           if (value.isNotEmpty && _searchResults.isNotEmpty) {
@@ -503,13 +507,14 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                             horizontal: 16,
                             vertical: 12,
                           ),
-                          suffixIcon: _searchController.text.isNotEmpty
+                          suffixIcon: _hasSearchText
                               ? IconButton(
                                   icon: const Icon(Icons.close),
                                   onPressed: () {
                                     _searchController.clear();
                                     setState(() {
                                       _searchResults = [];
+                                      _hasSearchText = false;
                                     });
                                   },
                                 )
@@ -946,8 +951,23 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   }
 
   Future<void> _selectSearchResult(Map<String, dynamic> result) async {
-    final resultLocation = result['location'] as LatLng;
+    var resultLocation = result['location'] as LatLng?;
     final resultName = result['name'] as String;
+    final placeId = result['placeId'] as String?;
+
+    // If location is not available, fetch it now
+    if (resultLocation == null && placeId != null) {
+      final details = await _getPlaceDetails(placeId);
+      if (details != null) {
+        resultLocation = details['location'] as LatLng;
+      }
+    }
+
+    if (resultLocation == null) {
+      debugPrint('Unable to get location for selected place');
+      return;
+    }
+
     final addressDetails = await _getAddressDetails(resultLocation);
 
     _searchController.clear();
@@ -989,7 +1009,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
     );
   }
 
-  void _updateSearchResults(String query) async {
+  void _updateSearchResults(String query) {
     if (query.isEmpty) {
       setState(() {
         _searchResults = [];
@@ -997,6 +1017,10 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
       return;
     }
 
+    _performPlaceSearch(query);
+  }
+
+  Future<void> _performPlaceSearch(String query) async {
     try {
       final results = await _getGooglePlacePredictions(query);
       if (mounted) {
@@ -1017,41 +1041,59 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
     try {
       final String url =
           'https://maps.googleapis.com/maps/api/place/autocomplete/json'
-          '?input=$input'
+          '?input=${Uri.encodeComponent(input)}'
           '&components=country:us'
           '&key=$apiKey'
           '&sessiontoken=$sessionToken';
+
+      debugPrint('Fetching: $url');
 
       final response = await http.get(Uri.parse(url)).timeout(
         const Duration(seconds: 5),
       );
 
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final status = json['status'] as String?;
+        
+        debugPrint('Google API status: $status');
+        
+        if (status != 'OK' && status != 'ZERO_RESULTS') {
+          debugPrint('API Error: ${json['error_message'] ?? status}');
+          return [];
+        }
+        
         final predictions = json['predictions'] as List<dynamic>? ?? [];
+        debugPrint('Got ${predictions.length} predictions');
 
         final results = <Map<String, dynamic>>[];
 
+        // Show predictions without details first, fetch details on selection
         for (var i = 0; i < predictions.length && i < 5; i++) {
           final prediction = predictions[i] as Map<String, dynamic>;
           final placeId = prediction['place_id'] as String?;
-          final mainText = prediction['main_text'] as String?;
-          final secondaryText = prediction['secondary_text'] as String?;
+          
+          // Extract main_text and secondary_text from structured_formatting
+          final structuredFormatting = prediction['structured_formatting'] as Map<String, dynamic>?;
+          final mainText = structuredFormatting?['main_text'] as String?;
+          final secondaryText = structuredFormatting?['secondary_text'] as String?;
+
+          debugPrint('Prediction $i: $mainText / $secondaryText (ID: $placeId)');
 
           if (placeId != null && mainText != null) {
-            // Get place details to get coordinates
-            final details = await _getPlaceDetails(placeId);
-            if (details != null) {
-              results.add({
-                'name': mainText,
-                'address': secondaryText ?? '',
-                'location': details['location'] as LatLng,
-                'placeId': placeId,
-              });
-            }
+            results.add({
+              'name': mainText,
+              'address': secondaryText ?? '',
+              'location': null, // Will be fetched on selection
+              'placeId': placeId,
+            });
           }
         }
 
+        debugPrint('Returning ${results.length} results');
         return results;
       } else {
         debugPrint('Google Places API error: ${response.statusCode}');
