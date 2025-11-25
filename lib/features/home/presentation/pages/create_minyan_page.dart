@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -681,6 +682,38 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    // Current Location button
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).colorScheme.primary,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () async {
+                            _goToCurrentLocation();
+                          },
+                          customBorder: const CircleBorder(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(
+                              Icons.my_location,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -727,6 +760,74 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
         ),
       ],
     );
+  }
+
+  Future<void> _goToCurrentLocation() async {
+    try {
+      // Request location permission if needed
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final requestResult = await Geolocator.requestPermission();
+        if (requestResult == LocationPermission.denied ||
+            requestResult == LocationPermission.deniedForever) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission is required'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+      }
+
+      // Get current location
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final currentLocation = LatLng(position.latitude, position.longitude);
+
+      // Animate camera to current location
+      _mapController.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: currentLocation,
+            zoom: 15.0,
+          ),
+        ),
+      );
+
+      // Add marker at current location
+      final markerId = MarkerId('current_location');
+      final marker = Marker(
+        markerId: markerId,
+        position: currentLocation,
+        infoWindow: const InfoWindow(
+          title: 'Your Location',
+        ),
+      );
+
+      setState(() {
+        _markers.clear();
+        _markers.add(marker);
+      });
+
+      // Show snackbar confirmation
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Located at your current position'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error getting current location: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not get current location: $e'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<Map<String, String>> _getAddressDetails(LatLng latLng) async {
