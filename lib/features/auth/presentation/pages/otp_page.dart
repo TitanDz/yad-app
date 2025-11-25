@@ -22,10 +22,10 @@ class OtpPage extends StatefulWidget {
 
 class _OtpPageState extends State<OtpPage> {
   final List<TextEditingController> _otpControllers = List.generate(
-    4,
+    5,
     (index) => TextEditingController(),
   );
-  final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
+  final List<FocusNode> _focusNodes = List.generate(5, (index) => FocusNode());
   bool _isLoading = false;
 
   @override
@@ -51,7 +51,7 @@ class _OtpPageState extends State<OtpPage> {
     if (!_isOtpComplete()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter all 4 digits'),
+          content: Text('Please enter all 5 digits'),
           backgroundColor: AppTheme.error,
         ),
       );
@@ -189,14 +189,14 @@ class _OtpPageState extends State<OtpPage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(
-                              4,
+                              5,
                               (index) => Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 8),
                                 child: OtpInputField(
                                   controller: _otpControllers[index],
                                   focusNode: _focusNodes[index],
                                   onChanged: (value) {
-                                    if (value.isNotEmpty && index < 3) {
+                                    if (value.isNotEmpty && index < 4) {
                                       _focusNodes[index + 1].requestFocus();
                                     } else if (value.isEmpty && index > 0) {
                                       _focusNodes[index - 1].requestFocus();

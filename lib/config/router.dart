@@ -74,6 +74,54 @@ class AppRouter {
             ..add(const InitializeMapEvent()),
           child: const HomePage(),
         ),
+        routes: [
+          // Nested routes under home - these will keep the navbar visible
+          GoRoute(
+            path: 'settings',
+            builder: (context, state) => BlocProvider<SettingsBloc>(
+              create: (context) => SettingsBloc(
+                settingsDataSource: MockSettingsDataSource(),
+              ),
+              child: const SettingsPage(),
+            ),
+          ),
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const ProfilePage(),
+          ),
+          GoRoute(
+            path: 'notifications',
+            builder: (context, state) => const NotificationsPage(),
+          ),
+          GoRoute(
+            path: 'prayer-preferences',
+            builder: (context, state) => const PrayerPreferencesPage(),
+          ),
+          GoRoute(
+            path: 'visibility',
+            builder: (context, state) => const VisibilityPage(),
+          ),
+          GoRoute(
+            path: 'travel-mode',
+            builder: (context, state) => const TravelModePage(),
+          ),
+          GoRoute(
+            path: 'report-problem',
+            builder: (context, state) => const ReportAProblemPage(),
+          ),
+          GoRoute(
+            path: 'help-center',
+            builder: (context, state) => const HelpCenterPage(),
+          ),
+          GoRoute(
+            path: 'about',
+            builder: (context, state) => const AboutPage(),
+          ),
+          GoRoute(
+            path: 'create-minyan',
+            builder: (context, state) => const CreateMinyanPage(),
+          ),
+        ],
       ),
       GoRoute(
         path: login,
@@ -137,58 +185,6 @@ class AppRouter {
             settingsDataSource: MockSettingsDataSource(),
           ),
           child: const InitialSetupPage(),
-        ),
-      ),
-      GoRoute(
-        path: settings,
-        builder: (context, state) => BlocProvider<SettingsBloc>(
-          create: (context) => SettingsBloc(
-            settingsDataSource: MockSettingsDataSource(),
-          ),
-          child: const SettingsPage(),
-        ),
-      ),
-      GoRoute(
-        path: profile,
-        builder: (context, state) => const ProfilePage(),
-      ),
-      GoRoute(
-        path: notifications,
-        builder: (context, state) => const NotificationsPage(),
-      ),
-      GoRoute(
-        path: prayerPreferences,
-        builder: (context, state) => const PrayerPreferencesPage(),
-      ),
-      GoRoute(
-        path: visibility,
-        builder: (context, state) => const VisibilityPage(),
-      ),
-      GoRoute(
-        path: travelMode,
-        builder: (context, state) => const TravelModePage(),
-      ),
-      GoRoute(
-        path: reportProblem,
-        builder: (context, state) => const ReportAProblemPage(),
-      ),
-      GoRoute(
-        path: helpCenter,
-        builder: (context, state) => const HelpCenterPage(),
-      ),
-      GoRoute(
-        path: about,
-        builder: (context, state) => const AboutPage(),
-      ),
-      GoRoute(
-        path: createMinyan,
-        builder: (context, state) => const CreateMinyanPage(),
-      ),
-      GoRoute(
-        path: minyanim,
-        builder: (context, state) => BlocProvider<MinyanBloc>(
-          create: (context) => getIt<MinyanBloc>(),
-          child: const MinyanPage(),
         ),
       ),
     ],

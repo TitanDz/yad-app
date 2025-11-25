@@ -64,13 +64,23 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBottomNavIcon(String assetPath, int tabIndex) {
     final isSelected = _selectedIndex == tabIndex;
-    return SvgPicture.asset(
-      assetPath,
-      width: 24,
-      height: 24,
-      colorFilter: ColorFilter.mode(
-        isSelected ? AppTheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
-        BlendMode.srcIn,
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isSelected ? Colors.white : Colors.transparent,
+      ),
+      child: Center(
+        child: SvgPicture.asset(
+          assetPath,
+          width: 24,
+          height: 24,
+          colorFilter: ColorFilter.mode(
+            AppTheme.divinity,
+            BlendMode.srcIn,
+          ),
+        ),
       ),
     );
   }
@@ -384,38 +394,42 @@ class _HomePageState extends State<HomePage> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                width: 1,
-              ),
+            color: AppTheme.celestial,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: (index) {
               setState(() => _selectedIndex = index);
             },
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Theme.of(context).colorScheme.surface,
+            backgroundColor: Colors.transparent,
             elevation: 0,
             selectedItemColor: AppTheme.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
+            unselectedItemColor: AppTheme.divinity,
+            selectedFontSize: 0,
+            unselectedFontSize: 0,
+            iconSize: 24,
             items: [
               BottomNavigationBarItem(
                 icon: _buildBottomNavIcon('assets/images/Navbar/home.svg', 0),
-                label: 'MAP',
+                label: '',
               ),
               BottomNavigationBarItem(
                 icon: _buildBottomNavIcon('assets/images/Navbar/calendar.svg', 1),
-                label: 'MINYAN',
+                label: '',
               ),
               BottomNavigationBarItem(
-                icon: _buildBottomNavIcon('assets/images/Icons/notification.svg', 2),
-                label: 'NOTIFICATIONS',
+                icon: _buildBottomNavIcon('assets/images/Navbar/groups.svg', 2),
+                label: '',
+              ),
+              BottomNavigationBarItem(
+                icon: _buildBottomNavIcon('assets/images/Navbar/user.svg', 3),
+                label: '',
               ),
             ],
           ),
@@ -679,10 +693,28 @@ class _HomePageState extends State<HomePage> {
         child: const MinyanPage(),
       );
     } else if (_selectedIndex == 2) {
-      // Notifications view
-      return BlocProvider<NotificationBloc>(
-        create: (context) => NotificationBloc()..add(const LoadNotificationsEvent()),
-        child: const NotificationsHomePage(),
+      // Messages view
+      return Center(
+        child: Text(
+          'Messages',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      );
+    } else if (_selectedIndex == 3) {
+      // Profile view
+      return Center(
+        child: Text(
+          'Profile',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
       );
     }
 

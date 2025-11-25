@@ -17,64 +17,61 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode ? AppTheme.neutral900 : AppTheme.purity;
-    final appBarBgColor = isDarkMode ? AppTheme.neutral900 : AppTheme.purity;
-    final textColor = isDarkMode ? Colors.white : AppTheme.neutral900;
+    final backgroundColor = isDarkMode ? AppTheme.neutral900 : AppTheme.divinity;
+    final textColor = isDarkMode ? Colors.white : Colors.white;
 
-    return Scaffold(
-        backgroundColor: backgroundColor,
-        appBar: AppBar(
-            backgroundColor: appBarBgColor,
-            elevation: 0,
-            leading: Container(
-              width: 44,
-              height: 44,
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isDarkMode ? AppTheme.neutral700 : AppTheme.neutral300,
-                  width: 1.5,
+    return Column(
+      children: [
+        // Top AppBar
+        AppBar(
+          backgroundColor: backgroundColor,
+          elevation: 0,
+          leading: Container(
+            width: 44,
+            height: 44,
+            margin: const EdgeInsets.all(8),
+            child: IconButton(
+              icon: SvgPicture.asset(
+                'assets/images/Icons/goback.svg',
+                colorFilter: ColorFilter.mode(
+                  textColor,
+                  BlendMode.srcIn,
                 ),
               ),
-              child: IconButton(
-                icon: SvgPicture.asset(
-                  'assets/images/Icons/goback.svg',
-                  colorFilter: ColorFilter.mode(
-                    textColor,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                onPressed: () => context.pop(),
-                padding: EdgeInsets.zero,
-              ),
+              onPressed: () => context.pop(),
+              padding: EdgeInsets.zero,
             ),
-            title: Text(
-              'Settings',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-            ),
-            centerTitle: true,
           ),
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          title: Text(
+            'Settings',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        // Settings Content
+        Expanded(
+          child: Material(
+            color: backgroundColor,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
                   // Account Section
                   _buildSectionTitle('Account', context),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 0),
                   _buildCardGrid(
                     context: context,
                     items: [
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/profile.svg',
                         title: 'Profile',
-                        subtitle: 'View profile',
+                        subtitle: 'View and edit your profile',
                         onTap: () {
                           context.push(AppRouter.profile);
                         },
@@ -82,7 +79,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/notification.svg',
                         title: 'Notifications',
-                        subtitle: 'Customize',
+                        subtitle: 'Customize your notification settings',
                         onTap: () {
                           context.push(AppRouter.notifications);
                         },
@@ -90,7 +87,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/preferences.svg',
                         title: 'Account Settings',
-                        subtitle: 'Manage',
+                        subtitle: 'Manage your account settings',
                         onTap: () {
                           // TODO: Navigate to account settings page
                         },
@@ -98,18 +95,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // Preferences Section
                   _buildSectionTitle('Preferences', context),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 0),
                   _buildCardGrid(
                     context: context,
                     items: [
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/visibility.svg',
                         title: 'Visibility',
-                        subtitle: 'Adjust settings',
+                        subtitle: 'Adjust your visibility settings',
                         onTap: () {
                           context.push(AppRouter.visibility);
                         },
@@ -117,7 +114,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/travelmode.svg',
                         title: 'Travel Mode',
-                        subtitle: 'Manage mode',
+                        subtitle: 'Manage your travel mode',
                         onTap: () {
                           context.push(AppRouter.travelMode);
                         },
@@ -125,7 +122,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/preferences.svg',
                         title: 'Prayer Preferences',
-                        subtitle: 'Customize',
+                        subtitle: 'Customize your prayer preferences',
                         onTap: () {
                           context.push(AppRouter.prayerPreferences);
                         },
@@ -133,26 +130,26 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // Support Section
                   _buildSectionTitle('Support', context),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 0),
                   _buildCardGrid(
                     context: context,
                     items: [
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/helpcenter.svg',
                         title: 'Help Center',
-                        subtitle: 'Get help',
+                        subtitle: 'Get help and support',
                         onTap: () {
                           context.push(AppRouter.helpCenter);
                         },
                       ),
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/reportaproblem.svg',
-                        title: 'Report',
-                        subtitle: 'Feedback',
+                        title: 'Report a Problem',
+                        subtitle: 'Report a problem or provide feedback',
                         onTap: () {
                           context.push(AppRouter.reportProblem);
                         },
@@ -160,7 +157,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _SettingsCard(
                         svgIcon: 'assets/images/Icons/about-us.svg',
                         title: 'About',
-                        subtitle: 'Learn more',
+                        subtitle: 'Learn more about the app',
                         onTap: () {
                           context.push(AppRouter.about);
                         },
@@ -168,29 +165,33 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // Preferences Toggle
                   _buildDarkModeToggle(),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // Logout Button
                   _buildLogoutButton(context),
-                  const SizedBox(height: 32),
-                ],
+                  const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
-        );
+        ),
+      ],
+    );
   }
 
   Widget _buildSectionTitle(String title, BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDarkMode ? Colors.white : AppTheme.neutral900;
+    final titleColor = isDarkMode ? Colors.white : Colors.white;
 
     return Text(
       title,
+      textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w700,
@@ -210,7 +211,7 @@ class _SettingsPageState extends State<SettingsPage> {
         crossAxisCount: 3,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.95,
+        childAspectRatio: 0.75,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -224,9 +225,9 @@ class _SettingsPageState extends State<SettingsPage> {
     _SettingsCard card,
   ) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final cardBgColor = isDarkMode ? AppTheme.neutral800 : Colors.white;
-    final titleColor = isDarkMode ? Colors.white : AppTheme.neutral900;
-    final subtitleColor = isDarkMode ? AppTheme.neutral400 : AppTheme.neutral600;
+    final cardBgColor = isDarkMode ? AppTheme.neutral800 : Colors.transparent;
+    final titleColor = isDarkMode ? Colors.white : Colors.white;
+    final subtitleColor = isDarkMode ? AppTheme.neutral400 : Colors.white.withValues(alpha: 0.9);
 
     return GestureDetector(
       onTap: card.onTap,
@@ -234,13 +235,6 @@ class _SettingsPageState extends State<SettingsPage> {
         decoration: BoxDecoration(
           color: cardBgColor,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -249,8 +243,8 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               // Icon with circular background
               Container(
-                width: 52,
-                height: 52,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   color: AppTheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
@@ -258,8 +252,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Center(
                   child: SvgPicture.asset(
                     card.svgIcon,
-                    width: 28,
-                    height: 28,
+                    width: 48,
+                    height: 48,
                   ),
                 ),
               ),
@@ -285,13 +279,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     Text(
                       card.subtitle,
                       textAlign: TextAlign.center,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w400,
                         color: subtitleColor,
-                        height: 1.1,
+                        height: 1.2,
                       ),
                     ),
                   ],
@@ -330,8 +324,8 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Row(
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   color: AppTheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
@@ -339,7 +333,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Icon(
                   isDarkMode ? Icons.dark_mode : Icons.light_mode,
                   color: AppTheme.primary,
-                  size: 28,
+                  size: 48,
                 ),
               ),
               const SizedBox(width: 16),
@@ -391,14 +385,10 @@ class _SettingsPageState extends State<SettingsPage> {
       onTap: () => _showLogoutConfirmation(context),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
-          color: AppTheme.error.withValues(alpha: 0.1),
+          color: AppTheme.error.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.error.withValues(alpha: 0.3),
-            width: 1.5,
-          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -406,14 +396,14 @@ class _SettingsPageState extends State<SettingsPage> {
             Icon(
               Icons.logout,
               color: AppTheme.error,
-              size: 20,
+              size: 24,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Text(
               'Log Out',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
                 color: AppTheme.error,
               ),
             ),
