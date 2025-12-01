@@ -2,6 +2,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yad_app/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:yad_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:yad_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:yad_app/config/service_locator.dart';
+import 'package:yad_app/core/services/app_initialization_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository repository;
@@ -43,6 +45,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
+      
+      // Auto-initialize user preferences after successful login
+      try {
+        final appInitService = getIt<AppInitializationService>();
+        await appInitService.initializeAfterLogin(user.id);
+      } catch (e) {
+        print('[AuthBloc] Failed to initialize user preferences: $e');
+        // Continue even if initialization fails
+      }
+      
       // Emit a new state that includes phone number for OTP
       emit(AuthLoginSuccess(user, event.email));
     } catch (e) {

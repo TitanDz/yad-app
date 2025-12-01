@@ -3,6 +3,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yad_app/features/home/data/repositories/minyan_repository.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
+import 'package:yad_app/config/service_locator.dart';
+import 'package:yad_app/core/services/app_initialization_service.dart';
+import 'package:yad_app/core/models/user_preferences.dart';
+import 'package:yad_app/core/services/prayer_times_calculator.dart';
 
 // Events
 abstract class MinyanEvent extends Equatable {
@@ -95,6 +99,32 @@ class RefreshMinyansEvent extends MinyanEvent {
   List<Object?> get props => [isMyMinyans];
 }
 
+class LoadUserPreferencesEvent extends MinyanEvent {
+  final String userId;
+
+  const LoadUserPreferencesEvent({required this.userId});
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class LoadPrayerTimesEvent extends MinyanEvent {
+  final double latitude;
+  final double longitude;
+  final String timeZone;
+  final DateTime date;
+
+  const LoadPrayerTimesEvent({
+    required this.latitude,
+    required this.longitude,
+    required this.timeZone,
+    required this.date,
+  });
+
+  @override
+  List<Object?> get props => [latitude, longitude, timeZone, date];
+}
+
 // States
 abstract class MinyanState extends Equatable {
   const MinyanState();
@@ -170,6 +200,34 @@ class MinyanActionSuccess extends MinyanState {
   List<Object?> get props => [message, action];
 }
 
+class UserPreferencesLoaded extends MinyanState {
+  final UserPreferences preferences;
+
+  const UserPreferencesLoaded({required this.preferences});
+
+  @override
+  List<Object?> get props => [preferences];
+}
+
+class PrayerTimesLoaded extends MinyanState {
+  final List<PrayerTime> prayerTimes;
+  final List<String> suggestedTypes;
+  final double latitude;
+  final double longitude;
+  final DateTime date;
+
+  const PrayerTimesLoaded({
+    required this.prayerTimes,
+    required this.suggestedTypes,
+    required this.latitude,
+    required this.longitude,
+    required this.date,
+  });
+
+  @override
+  List<Object?> get props => [prayerTimes, suggestedTypes, latitude, longitude, date];
+}
+
 // BLoC
 class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
   final MinyanRepository _minyanRepository;
@@ -185,6 +243,8 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     on<DeleteMinyanEvent>(_onDeleteMinyan);
     on<PublishMinyanEvent>(_onPublishMinyan);
     on<RefreshMinyansEvent>(_onRefreshMinyans);
+    on<LoadUserPreferencesEvent>(_onLoadUserPreferences);
+    on<LoadPrayerTimesEvent>(_onLoadPrayerTimes);
   }
 
   Future<void> _onLoadMyMinyans(
@@ -378,5 +438,53 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
 
   double _degreesToRadians(double degrees) {
     return degrees * (3.14159265359 / 180);
+  }
+
+  Future<void> _onLoadUserPreferences(
+    LoadUserPreferencesEvent event,
+    Emitter<MinyanState> emit,
+  ) async {
+    try {
+      final appInitService = getIt<AppInitializationService>();
+      final preferences = await appInitService.getCachedPreferences(event.userId);
+      if (preferences != null) {
+        emit(UserPreferencesLoaded(preferences: preferences));
+      }
+    } catch (e) {
+      print('[MinyanBloc] Failed to load user preferences: $e');
+      // Non-blocking - don't emit error state
+    }
+  }
+
+  Future<void> _onLoadPrayerTimes(
+    LoadPrayerTimesEvent event,
+    Emitter<MinyanState> emit,
+  ) async {
+    try {
+      final prayerTimes = PrayerTimesCalculator.calculatePrayerTimes(
+        latitude: event.latitude,
+        longitude: event.longitude,
+        date: event.date,
+        timeZone: event.timeZone,
+      );
+
+      final suggestedTypes = PrayerTimesCalculator.getSuggestedPrayerTypes(
+        latitude: event.latitude,
+        longitude: event.longitude,
+        now: DateTime.now(),
+        timeZone: event.timeZone,
+      );
+
+      emit(PrayerTimesLoaded(
+        prayerTimes: prayerTimes,
+        suggestedTypes: suggestedTypes,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        date: event.date,
+      ));
+    } catch (e) {
+      print('[MinyanBloc] Failed to load prayer times: $e');
+      // Non-blocking - don't emit error state
+    }
   }
 }

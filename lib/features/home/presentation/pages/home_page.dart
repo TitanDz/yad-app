@@ -7,6 +7,7 @@ import 'package:yad_app/config/service_locator.dart';
 import 'package:yad_app/config/theme.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/availability_bloc.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
 import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
 import 'package:http/http.dart' as http;
@@ -24,11 +25,14 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   late MinyanBloc _minyanBloc;
   late HomeBloc _homeBloc;
+  late AvailabilityBloc _availabilityBloc;
   List<Map<String, dynamic>> _autocompleteResults = [];
   bool _isLoadingAutocomplete = false;
   Timer? _autocompleteDebounceTimer;
+  String _userId = 'user_123'; // Placeholder - should get from auth
 
   @override
   void initState() {
@@ -38,8 +42,12 @@ class _HomePageState extends State<HomePage> {
     _minyanBloc = getIt<MinyanBloc>();
     // Initialize HomeBloc once and reuse it
     _homeBloc = getIt<HomeBloc>();
+    // Initialize AvailabilityBloc
+    _availabilityBloc = getIt<AvailabilityBloc>();
     // Add initialization event to HomeBloc only once
     _homeBloc.add(const InitializeMapEvent());
+    // Initialize availability tracking
+    _availabilityBloc.add(InitializeAvailabilityEvent(userId: _userId));
   }
 
   @override
@@ -201,6 +209,39 @@ class _HomePageState extends State<HomePage> {
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
+  }
+
+  Widget _buildNotificationBellIcon(int tabIndex) {
+    final isSelected = _selectedIndex == tabIndex;
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isSelected ? const Color(0xFFC9DDFC) : Colors.transparent,
+      ),
+      child: Center(
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Icon(
+              Icons.notifications,
+              color: AppTheme.divinity,
+              size: 24,
+            ),
+            // Red dot badge for unread notifications
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildBottomNavIcon(String assetPath, int tabIndex) {
@@ -569,7 +610,7 @@ class _HomePageState extends State<HomePage> {
                 label: '',
               ),
               BottomNavigationBarItem(
-                icon: _buildBottomNavIcon('assets/images/Navbar/user.svg', 3),
+                icon: _buildNotificationBellIcon(3),
                 label: '',
               ),
             ],
@@ -577,31 +618,19 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: _selectedIndex == 0
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width - 32,
-                child: ElevatedButton(
-                  onPressed: () {
-                    context.push('/create-minyan');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                  ),
-                  child: const Text(
-                    'Create Minyan',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
+          ? QuickActionFAB(
+              isAvailable: _availabilityBloc.state is AvailabilityLoaded &&
+                  !(_availabilityBloc.state as AvailabilityLoaded).status.isCurrentlyUnavailable,
+              onCreateMinyan: () {
+                context.push('/create-minyan');
+              },
+              onSearch: () {
+                // Focus on search bar
+                _searchFocusNode.requestFocus();
+              },
+              onToggleAvailability: () {
+                // Handled by availability bloc in the toggle widget
+              },
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -621,7 +650,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 // Status bar spacing
                 SizedBox(height: MediaQuery.of(context).padding.top),
-                // Header content
+        // Header content
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -671,6 +700,17 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ],
+                ),
+                // Availability Toggle
+                const SizedBox(height: 12),
+                BlocProvider<AvailabilityBloc>.value(
+                  value: _availabilityBloc,
+                  child: AvailabilityToggleWidget(
+                    userId: _userId,
+                    onAvailabilityChanged: () {
+                      // Trigger any additional updates needed
+                    },
+                  ),
                 ),
               ],
             ),

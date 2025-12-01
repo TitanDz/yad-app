@@ -85,7 +85,9 @@ class _OtpPageState extends State<OtpPage> {
             setState(() => _isLoading = true);
           } else if (state is OtpVerified) {
             setState(() => _isLoading = false);
-            context.push('/initial-setup');
+            // Auto-setup is already triggered in AuthBloc after login
+            // Navigate directly to home - user preferences are cached
+            context.go('/');
           } else if (state is OtpFailure) {
             setState(() => _isLoading = false);
             ScaffoldMessenger.of(context).showSnackBar(

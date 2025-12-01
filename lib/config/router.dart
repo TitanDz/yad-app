@@ -55,7 +55,12 @@ class AppRouter {
   static const String minyanim = '/minyanim';
 
   static final GoRouter router = GoRouter(
-    initialLocation: onboarding,
+    initialLocation: onboarding,  // Start with onboarding for unauthenticated users
+    redirect: (context, state) {
+      // Auth-based routing will be handled by listening to AuthBloc state
+      // This redirect function can be extended later for more sophisticated routing
+      return null;
+    },
     routes: [
       GoRoute(
         path: onboarding,
@@ -174,15 +179,6 @@ class AppRouter {
             ),
           );
         },
-      ),
-      GoRoute(
-        path: initialSetup,
-        builder: (context, state) => BlocProvider<SettingsBloc>(
-          create: (context) => SettingsBloc(
-            settingsDataSource: MockSettingsDataSource(),
-          ),
-          child: const InitialSetupPage(),
-        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

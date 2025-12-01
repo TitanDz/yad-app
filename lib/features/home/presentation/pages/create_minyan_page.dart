@@ -5,6 +5,9 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
+import 'package:yad_app/core/models/user_preferences.dart';
 
 class MinyanData {
   String? prayerType;
@@ -58,6 +61,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   final Set<Marker> _markers = {};
   List<Map<String, dynamic>> _searchResults = [];
   bool _hasSearchText = false;
+  UserPreferences? _userPreferences;
 
   @override
   void initState() {
@@ -68,6 +72,29 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
         _hasSearchText = _searchController.text.isNotEmpty;
       });
     });
+    
+    // Load user preferences if available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserPreferences();
+    });
+  }
+  
+  Future<void> _loadUserPreferences() async {
+    // Trigger MinyanBloc to load preferences
+    final state = context.read<MinyanBloc>().state;
+    if (state is UserPreferencesLoaded) {
+      setState(() {
+        _userPreferences = state.preferences;
+        // Auto-populate location if available
+        if (_userPreferences?.latitude != null && _userPreferences?.longitude != null) {
+          _minyanData.latitude = _userPreferences!.latitude;
+          _minyanData.longitude = _userPreferences!.longitude;
+          _minyanData.locationName = _userPreferences!.address ?? 'Current Location';
+        }
+        // Set default date to today
+        _minyanData.date = DateTime.now();
+      });
+    }
   }
 
   @override

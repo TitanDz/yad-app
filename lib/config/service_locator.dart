@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:yad_app/core/network/network_service.dart';
+import 'package:yad_app/core/local_storage/isar_service.dart';
+import 'package:yad_app/core/services/app_initialization_service.dart';
 import 'package:yad_app/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:yad_app/features/auth/data/datasources/auth_unified_datasource.dart';
 import 'package:yad_app/features/auth/data/repositories/auth_repository_impl.dart';
@@ -13,6 +15,7 @@ import 'package:yad_app/features/home/data/repositories/minyan_repository.dart';
 import 'package:yad_app/features/home/data/repositories/place_repository.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/availability_bloc.dart';
 import 'package:yad_app/features/settings/presentation/bloc/theme_bloc.dart';
 import 'package:yad_app/shared/constants/app_constants.dart';
 
@@ -23,10 +26,17 @@ Future<void> setupServiceLocator() async {
   getIt.registerSingleton<ThemeBloc>(
     ThemeBloc(),
   );
-
-  // Core services
   getIt.registerSingleton<NetworkService>(
     NetworkService(baseUrl: AppConstants.baseUrl),
+  );
+
+  // Initialize Isar and app initialization service
+  final isarService = IsarService();
+  await isarService.initialize();
+  getIt.registerSingleton<IsarService>(isarService);
+  
+  getIt.registerSingleton<AppInitializationService>(
+    AppInitializationService(isarService),
   );
 
   // Auth datasources - using unified datasource that can switch between mock and real
@@ -72,5 +82,10 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerSingleton<MinyanBloc>(
     MinyanBloc(minyanRepository: getIt<MinyanRepository>()),
+  );
+
+  // Availability bloc for 30-minute unavailable feature
+  getIt.registerSingleton<AvailabilityBloc>(
+    AvailabilityBloc(),
   );
 }
