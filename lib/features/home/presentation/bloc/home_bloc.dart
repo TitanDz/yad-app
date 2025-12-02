@@ -188,10 +188,42 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   ) async {
     emit(const HomeLoading());
     try {
-      final userLocation = await _locationService.getCurrentLocation();
+      // Get current location with fallback and timeout
+      UserLocation? userLocation;
+      try {
+        // Add a timeout at the BLoC level for extra safety
+        userLocation = await _locationService.getCurrentLocation().timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            debugPrint('⏱️ Location service timeout at BLoC level');
+            return null;
+          },
+        );
+        if (userLocation != null) {
+          debugPrint('📍 Current location obtained: $userLocation');
+        } else {
+          debugPrint('⚠️ Location service returned null');
+        }
+      } catch (locationError) {
+        debugPrint('⚠️ Location service error: $locationError');
+        // Continue with null location - map will show default location
+      }
 
-      // Load saved places from repository
-      final savedPlaces = await _placeRepository.getSavedPlaces(limit: 50);
+      // Load saved places from repository with timeout
+      List<Place> savedPlaces = [];
+      try {
+        savedPlaces = await _placeRepository.getSavedPlaces(limit: 50).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('⏱️ Place repository timeout');
+            return [];
+          },
+        );
+        debugPrint('📍 Loaded ${savedPlaces.length} saved places');
+      } catch (placesError) {
+        debugPrint('⚠️ Failed to load places: $placesError');
+        // Continue with empty places list
+      }
 
       // Create markers for saved places (using violet color)
       final placeMarkers = savedPlaces.asMap().entries.map((entry) {
@@ -220,7 +252,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         markers: updatedMarkers,
         synagogues: savedPlaces,
       ));
-    } catch (e) {
+      debugPrint('✅ Map initialization complete with ${updatedMarkers.length} markers');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Fatal map initialization error: $e');
+      debugPrint('Stack trace: $stackTrace');
       emit(HomeError('Failed to initialize map: ${e.toString()}'));
     }
   }
