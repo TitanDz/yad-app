@@ -17,7 +17,6 @@ import 'package:yad_app/features/home/presentation/pages/home_page.dart';
 import 'package:yad_app/features/home/presentation/pages/create_minyan_page.dart';
 import 'package:yad_app/features/settings/data/datasources/settings_datasource.dart';
 import 'package:yad_app/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:yad_app/features/settings/presentation/pages/initial_setup_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/settings_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/profile_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/notifications_page.dart';

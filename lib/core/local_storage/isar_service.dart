@@ -47,7 +47,7 @@ class IsarService {
   }
 
   Future<void> close() async {
-    if (_isar != null && _isar.isOpen) {
+    if (_isar.isOpen) {
       await _isar.close();
     }
   }

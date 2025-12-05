@@ -32,7 +32,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _autocompleteResults = [];
   bool _isLoadingAutocomplete = false;
   Timer? _autocompleteDebounceTimer;
-  String _userId = 'user_123'; // Placeholder - should get from auth
+  final String _userId = 'user_123'; // Placeholder - should get from auth
 
   @override
   void initState() {

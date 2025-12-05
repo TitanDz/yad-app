@@ -8,6 +8,10 @@
         android:label="yad_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyD1_mZtNCy3Rbb-qD4sQQtUKd25VzdF8hI" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -25,10 +29,6 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <!-- Google Maps API Key -->
-            <meta-data
-              android:name="com.google.android.geo.API_KEY"
-              android:value="AIzaSyD1_mZtNCy3Rbb-qD4sQQtUKd25VzdF8hI" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

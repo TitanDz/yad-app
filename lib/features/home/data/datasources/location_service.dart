@@ -34,8 +34,8 @@ class LocationService {
         debugPrint('✅ Permission granted, getting position...');
         
         try {
-          // Use a timeout to prevent hanging indefinitely
-          // On simulator or when location is unavailable, this prevents infinite waiting
+          // Try to get current position with timeout
+          // On simulator without mock location, this will timeout
           final Position position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 10),
@@ -56,7 +56,24 @@ class LocationService {
                 '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}',
           );
         } catch (e) {
-          debugPrint('⏱️ Position request failed: $e - Using fallback location');
+          debugPrint('⏱️ Position request failed: $e');
+          // Try to get last known position as fallback (works better on simulator)
+          try {
+            final Position? lastPosition = await Geolocator.getLastKnownPosition();
+            if (lastPosition != null) {
+              debugPrint('✅ Using last known position: ${lastPosition.latitude}, ${lastPosition.longitude}');
+              return UserLocation(
+                latitude: lastPosition.latitude,
+                longitude: lastPosition.longitude,
+                accuracy: lastPosition.accuracy,
+                address:
+                    '${lastPosition.latitude.toStringAsFixed(4)}, ${lastPosition.longitude.toStringAsFixed(4)}',
+              );
+            }
+          } catch (e) {
+            debugPrint('⚠️ Could not get last known position: $e');
+          }
+          debugPrint('⚠️ No location available - using fallback location');
           // Return null to use fallback location in HomePage
           return null;
         }

@@ -46,17 +46,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
       
-      // Auto-initialize user preferences after successful login
-      try {
-        final appInitService = getIt<AppInitializationService>();
-        await appInitService.initializeAfterLogin(user.id);
-      } catch (e) {
-        print('[AuthBloc] Failed to initialize user preferences: $e');
-        // Continue even if initialization fails
-      }
-      
-      // Emit a new state that includes phone number for OTP
+      // Emit success immediately - initialization happens in background
       emit(AuthLoginSuccess(user, event.email));
+      
+      // Initialize user preferences in background without blocking login flow
+      // This ensures the OTP screen shows immediately for better UX
+      Future.microtask(() async {
+        try {
+          final appInitService = getIt<AppInitializationService>();
+          await appInitService.initializeAfterLogin(user.id);
+          print('[AuthBloc] User preferences initialized in background for user: ${user.id}');
+        } catch (e) {
+          print('[AuthBloc] Failed to initialize user preferences (background): $e');
+          // Silent fail - app continues without user preferences
+        }
+      });
     } catch (e) {
       // Provide user-friendly error messages
       final errorMessage = _getErrorMessage(e);
