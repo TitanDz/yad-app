@@ -77,6 +77,7 @@ Future<void> setupServiceLocator() async {
     HomeBloc(
       locationService: getIt<LocationService>(),
       placeRepository: getIt<PlaceRepository>(),
+      minyanRepository: getIt<MinyanRepository>(),
     ),
   );
 

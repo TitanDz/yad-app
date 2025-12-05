@@ -2,14 +2,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
 import 'dart:async';
 import 'package:yad_app/features/home/data/datasources/location_service.dart';
 import 'package:yad_app/features/home/data/repositories/place_repository.dart';
+import 'package:yad_app/features/home/data/repositories/minyan_repository.dart';
 import 'package:yad_app/features/home/domain/entities/place.dart';
 import 'package:yad_app/features/home/domain/entities/user_location.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
-import 'package:yad_app/config/theme.dart';
+import 'package:yad_app/core/services/marker_builder.dart';
 
 // Events
 abstract class HomeEvent extends Equatable {
@@ -164,12 +164,15 @@ class HomeError extends HomeState {
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final LocationService _locationService;
   final PlaceRepository _placeRepository;
+  final MinyanRepository _minyanRepository;
 
   HomeBloc({
     LocationService? locationService,
     required PlaceRepository placeRepository,
+    required MinyanRepository minyanRepository,
   })  : _locationService = locationService ?? LocationService(),
         _placeRepository = placeRepository,
+        _minyanRepository = minyanRepository,
         super(const HomeInitial()) {
     on<InitializeMapEvent>(_onInitializeMap);
     on<SearchPlacesEvent>(_onSearchPlaces);
@@ -225,7 +228,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         // Continue with empty places list
       }
 
-      // Create markers for saved places (using violet color)
+      // Create markers for saved places (using custom pinMap.svg violet markers)
+      final synagogueMarkerIcon = await _createSynagogueMarker();
       final placeMarkers = savedPlaces.asMap().entries.map((entry) {
         final place = entry.value;
         return Marker(
@@ -235,15 +239,52 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             title: place.name,
             snippet: '${place.placeType}\n${place.address}',
           ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueViolet,
+          icon: synagogueMarkerIcon,
+        );
+      }).toSet();
+
+      // Load nearby minyans (with 100km radius)
+      List<Minyan> nearbyMinyans = [];
+      try {
+        final userLocationForMinyans = userLocation ?? 
+          UserLocation(latitude: 40.7128, longitude: -74.0060, accuracy: 0, address: 'Default Location');
+        
+        nearbyMinyans = await _minyanRepository.getNearbyMinyans(
+          latitude: userLocationForMinyans.latitude,
+          longitude: userLocationForMinyans.longitude,
+          radiusKm: 100.0, // 100km radius to show minyans from farther away
+          limit: 50,
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('⏱️ Minyan repository timeout');
+            return [];
+          },
+        );
+        debugPrint('🕯️ Loaded ${nearbyMinyans.length} nearby minyans');
+      } catch (minyansError) {
+        debugPrint('⚠️ Failed to load minyans: $minyansError');
+        // Continue with empty minyans list
+      }
+
+      // Create markers for minyans (using custom pinMap-styled blue markers)
+      final minyanMarkerIcon = await _createMinyanMarker();
+      final minyanMarkers = nearbyMinyans.map((minyan) {
+        return Marker(
+          markerId: MarkerId('minyan_${minyan.id}'),
+          position: LatLng(minyan.latitude, minyan.longitude),
+          infoWindow: InfoWindow(
+            title: minyan.locationName,
+            snippet: '${minyan.prayerType} at ${minyan.time}\nParticipants: ${minyan.participantCount}',
           ),
+          icon: minyanMarkerIcon,
         );
       }).toSet();
 
       // Add current location marker
+      final allMarkers = {...placeMarkers, ...minyanMarkers};
       final updatedMarkers = await _addCurrentLocationMarker(
-        placeMarkers,
+        allMarkers,
         userLocation,
       );
 
@@ -251,8 +292,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         userLocation: userLocation,
         markers: updatedMarkers,
         synagogues: savedPlaces,
+        minyans: nearbyMinyans,
       ));
-      debugPrint('✅ Map initialization complete with ${updatedMarkers.length} markers');
+      debugPrint('✅ Map initialization complete with ${updatedMarkers.length} markers (${placeMarkers.length} synagogues, ${minyanMarkers.length} minyans)');
     } catch (e, stackTrace) {
       debugPrint('❌ Fatal map initialization error: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -414,38 +456,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   Future<BitmapDescriptor> _createCustomLocationMarker() async {
-    final size = 150;
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
+    // Use default blue marker for current location
+    return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+  }
 
-    // Draw outer circle (darker blue)
-    final paint = Paint()
-      ..color = const Color(0xFF6B7FD6).withValues(alpha: 0.6)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(size / 2, size / 2), size / 2, paint);
+  Future<BitmapDescriptor> _createMinyanMarker() async {
+    // Use the custom pinMap.svg marker for minyan locations (blue variant)
+    return await MarkerBuilder.createMinyanMarker();
+  }
 
-    // Draw middle circle (medium blue)
-    final middlePaint = Paint()
-      ..color = AppTheme.primary.withValues(alpha: 0.8)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(size / 2, size / 2), size / 2.5, middlePaint);
-
-    // Draw inner circle (darker blue)
-    final innerPaint = Paint()
-      ..color = const Color(0xFF4D41DE)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(size / 2, size / 2), size / 4, innerPaint);
-
-    // Draw center white dot
-    final whitePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(size / 2, size / 2), size / 8, whitePaint);
-
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(size, size);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+  Future<BitmapDescriptor> _createSynagogueMarker() async {
+    // Use the custom pinMap.svg marker for synagogue locations (violet variant)
+    return await MarkerBuilder.createSynagogueMarker();
   }
 
   Future<Set<Marker>> _addCurrentLocationMarker(
@@ -498,7 +520,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       // Load nearby saved places
       final savedPlaces = await _placeRepository.getSavedPlaces(limit: 50);
 
-      // Create markers for places (using purple pins)
+      // Create markers for places (using custom pinMap.svg violet markers)
+      final synagogueMarkerIcon = await _createSynagogueMarker();
       final placeMarkers = savedPlaces.asMap().entries.map((entry) {
         final place = entry.value;
         return Marker(
@@ -508,9 +531,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             title: place.name,
             snippet: '${place.placeType}\n${place.address}',
           ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueViolet,
-          ),
+          icon: synagogueMarkerIcon,
         );
       }).toSet();
 
