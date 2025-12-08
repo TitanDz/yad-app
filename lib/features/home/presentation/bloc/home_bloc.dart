@@ -456,8 +456,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   Future<BitmapDescriptor> _createCustomLocationMarker() async {
-    // Use default blue marker for current location
-    return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+    // Use location.svg for current location marker
+    return await MarkerBuilder.createCurrentLocationMarker();
   }
 
   Future<BitmapDescriptor> _createMinyanMarker() async {
@@ -474,7 +474,14 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     Set<Marker> markers,
     UserLocation? userLocation,
   ) async {
-    if (userLocation == null) return markers;
+    // Use fallback location if userLocation is null
+    final locationForMarker = userLocation ?? 
+      UserLocation(
+        latitude: 40.7128,
+        longitude: -74.0060,
+        accuracy: 0,
+        address: 'Default Location (New York)',
+      );
 
     final updatedMarkers = Set<Marker>.from(markers);
     updatedMarkers.removeWhere(
@@ -488,8 +495,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       Marker(
         markerId: const MarkerId('current_location'),
         position: LatLng(
-          userLocation.latitude,
-          userLocation.longitude,
+          locationForMarker.latitude,
+          locationForMarker.longitude,
         ),
         infoWindow: const InfoWindow(title: 'Your Location'),
         icon: customIcon,
