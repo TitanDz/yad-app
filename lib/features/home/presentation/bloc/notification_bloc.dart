@@ -223,16 +223,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     final now = DateTime.now();
 
     _allNotifications.addAll([
-      notif_entity.Notification(
-        id: '1',
-        title: 'New Minyan Alert',
-        message: 'Shacharit service starting in 30 minutes at Central Synagogue',
-        type: 'minyan_alert',
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        isRead: false,
-        relatedMinyanId: 'minyan_1',
-        icon: 'alert',
-      ),
+      // notif_entity.Notification(
+      //   id: '1',
+      //   title: 'New Minyan Alert',
+      //   message: 'Shacharit service starting in 30 minutes at Central Synagogue',
+      //   type: 'minyan_alert',
+      //   timestamp: now.subtract(const Duration(minutes: 5)),
+      //   isRead: false,
+      //   relatedMinyanId: 'minyan_1',
+      //   icon: 'alert',
+      // ),
       notif_entity.Notification(
         id: '2',
         title: 'Minyan Update',

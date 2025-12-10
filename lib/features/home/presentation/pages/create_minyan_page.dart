@@ -7,9 +7,12 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:yad_app/features/home/domain/entities/minyan.dart';
 import 'package:yad_app/core/models/user_preferences.dart';
 
 class MinyanData {
+  String? id;  // For edit mode
   String? prayerType;
   DateTime? date;
   TimeOfDay? time;
@@ -26,6 +29,7 @@ class MinyanData {
   String? fullAddress;
 
   MinyanData({
+    this.id,
     this.prayerType,
     this.date,
     this.time,
@@ -62,6 +66,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _hasSearchText = false;
   UserPreferences? _userPreferences;
+  Minyan? _editingMinyan; // For tracking if in edit mode
 
   @override
   void initState() {
@@ -73,27 +78,84 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
       });
     });
     
-    // Load user preferences if available
+    // Load minyan data from route extras if editing
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUserPreferences();
+      final routeExtra = GoRouterState.of(context).extra;
+      if (routeExtra is Minyan) {
+        // Edit mode: pre-populate the form with existing minyan data
+        final minyan = routeExtra;
+        setState(() {
+          _editingMinyan = minyan;
+          _minyanData.id = minyan.id;
+          _minyanData.prayerType = minyan.prayerType;
+          _selectedPrayerType = minyan.prayerType;
+          _minyanData.date = DateTime.parse(minyan.date);
+          // Parse time from HH:MM format
+          final timeParts = minyan.time.split(':');
+          _minyanData.time = TimeOfDay(
+            hour: int.parse(timeParts[0]),
+            minute: int.parse(timeParts[1]),
+          );
+          _minyanData.locationName = minyan.locationName;
+          _minyanData.latitude = minyan.latitude;
+          _minyanData.longitude = minyan.longitude;
+          _minyanData.notes = minyan.notes;
+          _notesController.text = minyan.notes.isNotEmpty ? minyan.notes : '';
+        });
+        // After loading minyan data, reverse geocode to get address details
+        _loadAddressDetailsForEditingMinyan(minyan.latitude, minyan.longitude, minyan.locationName);
+      } else {
+        // Create mode: load user preferences
+        _loadUserPreferences();
+      }
+    });
+  }
+  
+  Future<void> _loadAddressDetailsForEditingMinyan(double latitude, double longitude, String locationName) async {
+    // When editing, reverse geocode the minyan coordinates to populate address details
+    // This ensures the full address information is displayed in the confirm step
+    final addressDetails = await _getAddressDetails(LatLng(latitude, longitude));
+    
+    setState(() {
+      _minyanData.fullAddress = addressDetails['fullAddress'] ?? locationName;
+      _minyanData.street = addressDetails['street'] ?? '';
+      _minyanData.neighborhood = addressDetails['neighborhood'] ?? '';
+      _minyanData.locality = addressDetails['locality'] ?? '';
+      _minyanData.administrativeArea = addressDetails['administrativeArea'] ?? '';
+      _minyanData.postalCode = addressDetails['postalCode'] ?? '';
+      _minyanData.country = addressDetails['country'] ?? '';
+      
+      // Add marker to map showing the minyan location
+      final marker = Marker(
+        markerId: const MarkerId('selected_location'),
+        position: LatLng(latitude, longitude),
+        infoWindow: InfoWindow(
+          title: locationName,
+        ),
+      );
+      _markers.clear();
+      _markers.add(marker);
     });
   }
   
   Future<void> _loadUserPreferences() async {
-    // Trigger MinyanBloc to load preferences
-    final state = context.read<MinyanBloc>().state;
-    if (state is UserPreferencesLoaded) {
-      setState(() {
-        _userPreferences = state.preferences;
-        // Auto-populate location if available
-        if (_userPreferences?.latitude != null && _userPreferences?.longitude != null) {
-          _minyanData.latitude = _userPreferences!.latitude;
-          _minyanData.longitude = _userPreferences!.longitude;
-          _minyanData.locationName = _userPreferences!.address ?? 'Current Location';
-        }
-        // Set default date to today
-        _minyanData.date = DateTime.now();
-      });
+    // Only load user preferences if not in edit mode
+    if (_editingMinyan == null) {
+      // Trigger MinyanBloc to load preferences
+      final state = context.read<MinyanBloc>().state;
+      if (state is UserPreferencesLoaded) {
+        setState(() {
+          _userPreferences = state.preferences;
+          // Auto-populate location if available
+          if (_userPreferences?.latitude != null && _userPreferences?.longitude != null) {
+            _minyanData.latitude = _userPreferences!.latitude;
+            _minyanData.longitude = _userPreferences!.longitude;
+            _minyanData.locationName = _userPreferences!.address ?? 'Current Location';
+          }
+          // Set default date to today
+          _minyanData.date = DateTime.now();
+        });
+      }
     }
   }
 
@@ -107,22 +169,61 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'New Minyan',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+    return BlocListener<MinyanBloc, MinyanState>(
+      listener: (context, state) {
+        if (state is MinyanActionSuccess && (state.action == 'created' || state.action == 'updated') && state.createdMinyan != null) {
+          // Dispatch refresh event to HomeBloc to update the map with new minyan
+          final minyan = state.createdMinyan!;
+          debugPrint('\n📍 [CreateMinyanPage] Minyan created successfully, dispatching refresh to HomeBloc...');
+          context.read<HomeBloc>().add(
+            RefreshNearbyMiniyansEvent(
+              latitude: minyan.latitude,
+              longitude: minyan.longitude,
+            ),
+          );
+          
+          // Navigate back to home
+          if (mounted) {
+            Navigator.of(context).pop();
+            // Navigate back to home with location data
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                debugPrint('   ✅ Navigating back to home...');
+                GoRouter.of(context).go('/', extra: {
+                  'scrollToLocation': true,
+                  'latitude': minyan.latitude,
+                  'longitude': minyan.longitude,
+                  'minyanId': minyan.id,
+                });
+              }
+            });
+          }
+        } else if (state is MinyanError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () => context.pop(),
+          ),
+          title: Text(
+            _editingMinyan != null ? 'Edit Minyan' : 'New Minyan',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
+        body: _buildStepContent(_currentStep),
       ),
-      body: _buildStepContent(_currentStep),
     );
   }
 
@@ -1487,7 +1588,60 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    setState(() => _currentStep = 3);
+                    // Validate that all required fields are filled
+                    if (_minyanData.prayerType == null || 
+                        _minyanData.prayerType!.isEmpty ||
+                        _minyanData.date == null ||
+                        _minyanData.time == null ||
+                        _minyanData.locationName == null ||
+                        _minyanData.locationName!.isEmpty ||
+                        _minyanData.latitude == null ||
+                        _minyanData.longitude == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Please fill in all required fields'),
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      );
+                      return;
+                    }
+                    
+                    // Format date as YYYY-MM-DD
+                    final dateStr = _minyanData.date!.toString().split(' ')[0];
+                    // Format time as HH:MM (24-hour format)
+                    final hour = _minyanData.time!.hour.toString().padLeft(2, '0');
+                    final minute = _minyanData.time!.minute.toString().padLeft(2, '0');
+                    final timeStr = '$hour:$minute';
+                    
+                    // Check if editing or creating
+                    if (_editingMinyan != null && _minyanData.id != null) {
+                      // Edit mode: dispatch UpdateMinyanEvent
+                      context.read<MinyanBloc>().add(
+                        UpdateMinyanEvent(
+                          minyanId: _minyanData.id!,
+                          prayerType: _minyanData.prayerType!,
+                          date: dateStr,
+                          time: timeStr,
+                          locationName: _minyanData.locationName!,
+                          latitude: _minyanData.latitude!,
+                          longitude: _minyanData.longitude!,
+                          notes: _notesController.text,
+                        ),
+                      );
+                    } else {
+                      // Create mode: dispatch CreateMinyanEvent
+                      context.read<MinyanBloc>().add(
+                        CreateMinyanEvent(
+                          prayerType: _minyanData.prayerType!,
+                          date: dateStr,
+                          time: timeStr,
+                          locationName: _minyanData.locationName!,
+                          latitude: _minyanData.latitude!,
+                          longitude: _minyanData.longitude!,
+                          notes: _notesController.text,
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1495,9 +1649,9 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Publish Minyan',
-                    style: TextStyle(
+                  child: Text(
+                    _editingMinyan != null ? 'Save changes' : 'Publish Minyan',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),

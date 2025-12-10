@@ -423,7 +423,7 @@ class _MinyanPageState extends State<MinyanPage>
                 ? (MediaQuery.of(context).size.width - 64) / 3
                 : (MediaQuery.of(context).size.width - 56) / 2,
             child: OutlinedButton.icon(
-              onPressed: () => context.push('/create-minyan'),
+              onPressed: () => context.push('/create-minyan', extra: minyan),
               icon: const Icon(Icons.edit_outlined, size: 16),
               label: const Text('Edit', style: TextStyle(fontSize: 12)),
               style: OutlinedButton.styleFrom(

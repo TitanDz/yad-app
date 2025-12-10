@@ -33,6 +33,7 @@ class _HomePageState extends State<HomePage> {
   bool _isLoadingAutocomplete = false;
   Timer? _autocompleteDebounceTimer;
   final String _userId = 'user_123'; // Placeholder - should get from auth
+  bool _refreshTriggered = false; // Flag to prevent duplicate refresh triggers
 
   @override
   void initState() {
@@ -48,6 +49,12 @@ class _HomePageState extends State<HomePage> {
     _homeBloc.add(const InitializeMapEvent());
     // Initialize availability tracking
     _availabilityBloc.add(InitializeAvailabilityEvent(userId: _userId));
+    
+    // Reset refresh flag when the page comes back into focus
+    // This ensures auto-refresh works when returning from create minyan
+    _refreshTriggered = false;
+    
+    // BlocListener in build() will handle auto-refresh when map is ready
   }
 
   @override
@@ -599,19 +606,19 @@ class _HomePageState extends State<HomePage> {
             items: [
               BottomNavigationBarItem(
                 icon: _buildBottomNavIcon('assets/images/Navbar/home.svg', 0),
-                label: '',
+                label: 'Home',
               ),
               BottomNavigationBarItem(
                 icon: _buildBottomNavIcon('assets/images/Navbar/calendar.svg', 1),
-                label: '',
+                label: 'Minyans',
               ),
               BottomNavigationBarItem(
-                icon: _buildBottomNavIcon('assets/images/Navbar/groups.svg', 2),
-                label: '',
+                icon: _buildNotificationBellIcon(2),
+                label: 'Notifications',
               ),
               BottomNavigationBarItem(
-                icon: _buildNotificationBellIcon(3),
-                label: '',
+                icon: _buildBottomNavIcon('assets/images/Navbar/user.svg', 3),
+                label: 'Profile',
               ),
             ],
           ),
@@ -727,6 +734,7 @@ class _HomePageState extends State<HomePage> {
                 // Full screen map
                 BlocBuilder<HomeBloc, HomeState>(
                   builder: (context, state) {
+                    debugPrint('[HomePage.BlocBuilder] Rebuilding with state type: ${state.runtimeType}');
                     if (state is HomeLoading) {
                       return Center(
                         child: CircularProgressIndicator(
@@ -738,6 +746,7 @@ class _HomePageState extends State<HomePage> {
                     }
 
                     if (state is HomeMapReady) {
+                      debugPrint('[HomePage.BlocBuilder] HomeMapReady state - markers count: ${state.markers.length}, minyans count: ${state.minyans.length}');
                       final userLocation = state.userLocation;
                       final initialPosition = userLocation != null
                           ? LatLng(userLocation.latitude, userLocation.longitude)
@@ -746,6 +755,7 @@ class _HomePageState extends State<HomePage> {
                       return Stack(
                         children: [
                           GoogleMap(
+                            key: ValueKey('map_${state.markers.length}'),  // Force rebuild when markers change
                             onMapCreated: _onMapCreated,
                             initialCameraPosition: CameraPosition(
                               target: initialPosition,
@@ -810,6 +820,18 @@ class _HomePageState extends State<HomePage> {
 
                     return const SizedBox();
                   },
+                ),
+
+                // BlocListener to automatically refresh when map is ready
+                BlocListener<HomeBloc, HomeState>(
+                  listener: (context, state) {
+                    if (state is HomeMapReady && !_refreshTriggered) {
+                      debugPrint('\n🎯 [BlocListener] Map became ready! Triggering auto-refresh to load nearby minyans...');
+                      _refreshTriggered = true;
+                      _homeBloc.add(const RefreshNearbyMiniyansEvent());
+                    }
+                  },
+                  child: const SizedBox.shrink(),
                 ),
 
                 // Floating Search Bar (overlaying map)
@@ -1242,16 +1264,16 @@ class _HomePageState extends State<HomePage> {
         ],
       );
     } else if (_selectedIndex == 1) {
-      // Minyan view
+      // Minyans view
       return BlocProvider<MinyanBloc>.value(
         value: _minyanBloc,
         child: const MinyanPage(),
       );
     } else if (_selectedIndex == 2) {
-      // Messages view
+      // Notifications view
       return Center(
         child: Text(
-          'Messages',
+          'Notifications',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,

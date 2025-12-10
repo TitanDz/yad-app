@@ -79,6 +79,18 @@ class SelectMarkerEvent extends HomeEvent {
   List<Object?> get props => [markerId, isMinyan];
 }
 
+class RefreshNearbyMiniyansEvent extends HomeEvent {
+  /// Refresh the list of nearby minyans (e.g., after creating a new minyan)
+  /// Optional: provide specific coordinates to search from (used when creating a minyan at a new location)
+  final double? latitude;
+  final double? longitude;
+
+  const RefreshNearbyMiniyansEvent({this.latitude, this.longitude});
+
+  @override
+  List<Object?> get props => [latitude, longitude];
+}
+
 // States
 abstract class HomeState extends Equatable {
   const HomeState();
@@ -183,6 +195,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<GetCurrentLocationEvent>(_onGetCurrentLocation);
     on<UpdateMapCameraEvent>(_onUpdateMapCamera);
     on<ClearSearchEvent>(_onClearSearch);
+    on<RefreshNearbyMiniyansEvent>(_onRefreshNearbyMinyans);
   }
 
   Future<void> _onInitializeMap(
@@ -249,6 +262,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         final userLocationForMinyans = userLocation ?? 
           UserLocation(latitude: 40.7128, longitude: -74.0060, accuracy: 0, address: 'Default Location');
         
+        debugPrint('\n📍 [HomeBloc] Loading minyans from user location: (${userLocationForMinyans.latitude}, ${userLocationForMinyans.longitude})');
+        
         nearbyMinyans = await _minyanRepository.getNearbyMinyans(
           latitude: userLocationForMinyans.latitude,
           longitude: userLocationForMinyans.longitude,
@@ -261,7 +276,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             return [];
           },
         );
-        debugPrint('🕯️ Loaded ${nearbyMinyans.length} nearby minyans');
+        debugPrint('🕯️ Loaded ${nearbyMinyans.length} nearby minyans for map display');
       } catch (minyansError) {
         debugPrint('⚠️ Failed to load minyans: $minyansError');
         // Continue with empty minyans list
@@ -270,6 +285,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       // Create markers for minyans (using custom pinMap-styled blue markers)
       final minyanMarkerIcon = await _createMinyanMarker();
       final minyanMarkers = nearbyMinyans.map((minyan) {
+        debugPrint('   🛍️ Creating marker for minyan: ${minyan.id} | ${minyan.locationName}');
         return Marker(
           markerId: MarkerId('minyan_${minyan.id}'),
           position: LatLng(minyan.latitude, minyan.longitude),
@@ -590,6 +606,104 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       }
     } catch (e) {
       emit(HomeError('Failed to select marker: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onRefreshNearbyMinyans(
+    RefreshNearbyMiniyansEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    debugPrint('\n🔄 [_onRefreshNearbyMinyans] EVENT RECEIVED - Checking state...');
+    debugPrint('   Current state type: ${state.runtimeType}');
+    debugPrint('   Event coordinates: lat=${event.latitude}, lon=${event.longitude}');
+    
+    if (state is! HomeMapReady) {
+      debugPrint('   ❌ State is NOT HomeMapReady - ignoring refresh event');
+      return;
+    }
+
+    final currentState = state as HomeMapReady;
+    
+    debugPrint('   ✅ State is HomeMapReady - proceeding with refresh');
+
+    try {
+      // Load nearby minyans (with 100km radius)
+      List<Minyan> nearbyMinyans = [];
+      try {
+        // Use provided coordinates if available, otherwise use current user location
+        double latForSearch = event.latitude ?? currentState.userLocation?.latitude ?? 40.7128;
+        double lonForSearch = event.longitude ?? currentState.userLocation?.longitude ?? -74.0060;
+        
+        nearbyMinyans = await _minyanRepository.getNearbyMinyans(
+          latitude: latForSearch,
+          longitude: lonForSearch,
+          radiusKm: 100.0,
+          limit: 50,
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('⏱️ Minyan repository timeout during refresh');
+            return [];
+          },
+        );
+        debugPrint('🕯️ Refreshed: Loaded ${nearbyMinyans.length} nearby minyans');
+      } catch (minyansError) {
+        debugPrint('⚠️ Failed to load minyans during refresh: $minyansError');
+        rethrow;
+      }
+
+      // Create markers for minyans
+      final minyanMarkerIcon = await _createMinyanMarker();
+      final minyanMarkers = nearbyMinyans.map((minyan) {
+        debugPrint('   🛍️ [REFRESH] Creating marker for minyan: ${minyan.id} | ${minyan.locationName}');
+        return Marker(
+          markerId: MarkerId('minyan_${minyan.id}'),
+          position: LatLng(minyan.latitude, minyan.longitude),
+          infoWindow: InfoWindow(
+            title: minyan.locationName,
+            snippet: '${minyan.prayerType} at ${minyan.time}\nParticipants: ${minyan.participantCount}',
+          ),
+          icon: minyanMarkerIcon,
+        );
+      }).toSet();
+      debugPrint('   📍 Total minyan markers created during refresh: ${minyanMarkers.length}');
+
+      // Combine with existing place markers (synagogues)
+      final synagogueMarkerIcon = await _createSynagogueMarker();
+      final placeMarkers = currentState.synagogues.asMap().entries.map((entry) {
+        final place = entry.value;
+        debugPrint('   🛍️ [REFRESH] Creating marker for place: ${place.id} | ${place.name}');
+        return Marker(
+          markerId: MarkerId('place_${place.id}'),
+          position: LatLng(place.latitude, place.longitude),
+          infoWindow: InfoWindow(
+            title: place.name,
+            snippet: '${place.placeType}\n${place.address}',
+          ),
+          icon: synagogueMarkerIcon,
+        );
+      }).toSet();
+      debugPrint('   📍 Total place markers created during refresh: ${placeMarkers.length}');
+
+      final allMarkers = {...placeMarkers, ...minyanMarkers};
+      debugPrint('   📊 All markers combined: ${allMarkers.length} (places + minyans)');
+      final updatedMarkers = await _addCurrentLocationMarker(
+        allMarkers,
+        currentState.userLocation,
+      );
+      debugPrint('   🗺️ Final markers after adding current location: ${updatedMarkers.length}');
+
+      debugPrint('\n📤 [REFRESH] Emitting new HomeMapReady state with ${updatedMarkers.length} markers');
+
+      emit(currentState.copyWith(
+        minyans: nearbyMinyans,
+        markers: updatedMarkers,
+      ));
+      debugPrint('   ✅ State emitted! HomeMapReady should now rebuild with new markers');
+      debugPrint('✅ Nearby minyans refresh complete');
+    } catch (e) {
+      debugPrint('❌ Error refreshing nearby minyans: $e');
+      emit(HomeError('Failed to refresh nearby minyans: ${e.toString()}'));
     }
   }
 }

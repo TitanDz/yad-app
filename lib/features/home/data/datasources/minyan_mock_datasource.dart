@@ -1,15 +1,23 @@
 import 'package:yad_app/features/home/data/datasources/minyan_remote_datasource.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
 import 'package:yad_app/core/services/location_calculator.dart';
+import 'package:flutter/foundation.dart';
 
 class MockMinyanRemoteDataSource implements MinyanRemoteDataSource {
-  final List<Minyan> _mockMinyans = [];
+  static final List<Minyan> _mockMinyans = [];  // Static to persist across instances
+  static bool _initialized = false;  // Prevent re-initialization
 
   MockMinyanRemoteDataSource() {
     _initializeMockData();
   }
 
   void _initializeMockData() {
+    // Only initialize once - prevents data loss when datasource is recreated
+    if (_initialized) {
+      debugPrint('⚡ [MockMinyanDataSource] Already initialized with ${_mockMinyans.length} minyans');
+      return;
+    }
+    
     final today = DateTime.now();
     final yesterday = today.subtract(const Duration(days: 1));
     final tomorrow = today.add(const Duration(days: 1));
@@ -18,24 +26,10 @@ class MockMinyanRemoteDataSource implements MinyanRemoteDataSource {
     final yesterdayStr = _formatDate(yesterday);
     final tomorrowStr = _formatDate(tomorrow);
     
+    _initialized = true;
+    debugPrint('📱 [MockMinyanDataSource] Initializing mock data for the first time');
+    
     _mockMinyans.addAll([
-      // New York - Manhattan
-      Minyan(
-        id: '1',
-        userId: 'user456',
-        prayerType: 'Shacharit',
-        date: todayStr,
-        time: '06:30',
-        locationName: 'Central Synagogue',
-        latitude: 40.7128,
-        longitude: -74.0060,
-        notes: 'Morning prayers with breakfast',
-        status: 'published',
-        participantCount: 5,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        isCreatedByUser: false,
-      ),
       // Los Angeles - Beverly Hills
       Minyan(
         id: '2',
@@ -224,6 +218,11 @@ class MockMinyanRemoteDataSource implements MinyanRemoteDataSource {
         isCreatedByUser: false,
       ),
     ]);
+    
+    debugPrint('✅ [MockMinyanDataSource] Initialized with ${_mockMinyans.length} minyans:');
+    for (final minyan in _mockMinyans) {
+      debugPrint('   - ID: ${minyan.id} | ${minyan.locationName} | Status: ${minyan.status} | Created by user: ${minyan.isCreatedByUser}');
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -250,11 +249,21 @@ class MockMinyanRemoteDataSource implements MinyanRemoteDataSource {
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
     
+    debugPrint('\n🔍 [getNearbyMinyans] Searching for minyans near ($latitude, $longitude) within ${radiusKm}km radius');
+    debugPrint('📊 [getNearbyMinyans] Total minyans in datasource: ${_mockMinyans.length}');
+    
     // Filter minyans within radius and calculate actual distances
     final nearby = <Minyan>[];
     for (final minyan in _mockMinyans) {
+      debugPrint('\n   📍 Checking minyan ID: ${minyan.id} | ${minyan.locationName}');
+      debugPrint('      Status: ${minyan.status} | Coordinates: (${minyan.latitude}, ${minyan.longitude})');
+      
       // Only include published minyans
-      if (minyan.status != 'published') continue;
+      if (minyan.status != 'published') {
+        debugPrint('      ❌ Filtered out - Status is not published');
+        continue;
+      }
+      debugPrint('      ✓ Status check passed (published)');
       
       // Calculate actual distance from user location using Haversine formula
       final distance = LocationCalculator.calculateDistanceInKm(
@@ -264,8 +273,11 @@ class MockMinyanRemoteDataSource implements MinyanRemoteDataSource {
         minyan.longitude,
       );
       
+      debugPrint('      Distance: ${distance.toStringAsFixed(2)}km');
+      
       // Filter by radius
       if (distance <= radiusKm) {
+        debugPrint('      ✅ INCLUDED - Within ${radiusKm}km radius');
         // Add calculated distance to minyan
         final minyanWithDistance = Minyan(
           id: minyan.id,
@@ -285,13 +297,24 @@ class MockMinyanRemoteDataSource implements MinyanRemoteDataSource {
           isCreatedByUser: minyan.isCreatedByUser,
         );
         nearby.add(minyanWithDistance);
+      } else {
+        debugPrint('      ❌ Filtered out - Distance ${distance.toStringAsFixed(2)}km exceeds radius');
       }
     }
     
     // Sort by distance (closest first)
     nearby.sort((a, b) => (a.distance ?? 0).compareTo(b.distance ?? 0));
     
-    return nearby.skip(offset).take(limit).toList();
+    debugPrint('\n🎯 [getNearbyMinyans] Results after filtering:');
+    debugPrint('   Total matches: ${nearby.length}');
+    for (final minyan in nearby) {
+      debugPrint('   - ID: ${minyan.id} | ${minyan.locationName} | Distance: ${minyan.distance?.toStringAsFixed(2)}km | Created by user: ${minyan.isCreatedByUser}');
+    }
+    
+    final result = nearby.skip(offset).take(limit).toList();
+    debugPrint('   Returned (after pagination offset=$offset, limit=$limit): ${result.length} minyans\n');
+    
+    return result;
   }
 
   @override
@@ -324,13 +347,22 @@ class MockMinyanRemoteDataSource implements MinyanRemoteDataSource {
       latitude: latitude,
       longitude: longitude,
       notes: notes,
-      status: 'draft',
+      status: 'published',  // Mark as published immediately so it appears on map
       participantCount: 1,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       isCreatedByUser: true,
     );
     _mockMinyans.add(newMinyan);
+    
+    debugPrint('\n🎨 [createMinyan] NEW MINYAN CREATED:');
+    debugPrint('   ID: ${newMinyan.id}');
+    debugPrint('   Location: ${newMinyan.locationName} at (${newMinyan.latitude}, ${newMinyan.longitude})');
+    debugPrint('   Prayer Type: ${newMinyan.prayerType} at ${newMinyan.time} on ${newMinyan.date}');
+    debugPrint('   Status: ${newMinyan.status}');
+    debugPrint('   Created by user: ${newMinyan.isCreatedByUser}');
+    debugPrint('   Total minyans in datasource now: ${_mockMinyans.length}\n');
+    
     return newMinyan;
   }
 

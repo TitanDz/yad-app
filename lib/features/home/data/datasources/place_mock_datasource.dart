@@ -10,16 +10,16 @@ class MockPlaceRemoteDataSource implements PlaceRemoteDataSource {
 
   void _initializeMockData() {
     _mockPlaces.addAll([
-      Place(
-        id: 'place_1',
-        name: 'Central Synagogue',
-        address: '652 Park Ave, New York, NY 10065',
-        latitude: 40.7128,
-        longitude: -74.0060,
-        placeType: 'Synagogue',
-        phoneNumber: '(212) 838-5122',
-        website: 'www.centralsynagogue.org',
-      ),
+      // Place(
+      //   id: 'place_1',
+      //   name: 'Central Synagogue',
+      //   address: '652 Park Ave, New York, NY 10065',
+      //   latitude: 40.7128,
+      //   longitude: -74.0060,
+      //   placeType: 'Synagogue',
+      //   phoneNumber: '(212) 838-5122',
+      //   website: 'www.centralsynagogue.org',
+      // ),
       Place(
         id: 'place_2',
         name: 'Park Avenue Shul',

@@ -91,16 +91,16 @@ class PlacesService {
   ) {
     final mockPlaces = [
       // Jewish Prayer Venues
-      Place(
-        id: '101',
-        name: 'Central Synagogue',
-        address: '123 E 55th St, New York, NY 10022',
-        latitude: 40.7615,
-        longitude: -73.9776,
-        placeType: 'Synagogue',
-        phoneNumber: '+1 (212) 838-5122',
-        website: 'https://www.centralsynagogue.org',
-      ),
+      // Place(
+      //   id: '101',
+      //   name: 'Central Synagogue',
+      //   address: '123 E 55th St, New York, NY 10022',
+      //   latitude: 40.7615,
+      //   longitude: -73.9776,
+      //   placeType: 'Synagogue',
+      //   phoneNumber: '+1 (212) 838-5122',
+      //   website: 'https://www.centralsynagogue.org',
+      // ),
       Place(
         id: '102',
         name: 'Temple Emanu-El',

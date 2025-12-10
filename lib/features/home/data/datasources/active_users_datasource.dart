@@ -95,17 +95,17 @@ class MockActiveUsersDataSource implements ActiveUsersDataSource {
         lastPrayerType: prayerType,
         distance: 0.2,
       ),
-      ActiveUserMarker(
-        userId: 'user_006',
-        name: 'Miriam',
-        latitude: 40.7180,
-        longitude: -73.9950,
-        address: 'Central Synagogue',
-        isAvailable: true,
-        minutesUnavailable: 0,
-        lastPrayerType: prayerType,
-        distance: 0.8,
-      ),
+      // ActiveUserMarker(
+      //   userId: 'user_006',
+      //   name: 'Miriam',
+      //   latitude: 40.7180,
+      //   longitude: -73.9950,
+      //   address: 'Central Synagogue',
+      //   isAvailable: true,
+      //   minutesUnavailable: 0,
+      //   lastPrayerType: prayerType,
+      //   distance: 0.8,
+      // ),
     ];
   }
 }

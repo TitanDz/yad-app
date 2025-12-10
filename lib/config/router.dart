@@ -13,6 +13,7 @@ import 'package:yad_app/features/auth/presentation/pages/forgot_password_code_pa
 import 'package:yad_app/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/password_reset_success_page.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/pages/home_page.dart';
 import 'package:yad_app/features/home/presentation/pages/create_minyan_page.dart';
 import 'package:yad_app/features/settings/data/datasources/settings_datasource.dart';
@@ -120,7 +121,17 @@ class AppRouter {
           ),
           GoRoute(
             path: 'create-minyan',
-            builder: (context, state) => const CreateMinyanPage(),
+            builder: (context, state) => MultiBlocProvider(
+              providers: [
+                BlocProvider<MinyanBloc>.value(
+                  value: getIt<MinyanBloc>(),
+                ),
+                BlocProvider<HomeBloc>.value(
+                  value: getIt<HomeBloc>(),
+                ),
+              ],
+              child: const CreateMinyanPage(),
+            ),
           ),
         ],
       ),

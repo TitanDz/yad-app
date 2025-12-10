@@ -125,6 +125,54 @@ class LoadPrayerTimesEvent extends MinyanEvent {
   List<Object?> get props => [latitude, longitude, timeZone, date];
 }
 
+class CreateMinyanEvent extends MinyanEvent {
+  final String prayerType;
+  final String date;
+  final String time;
+  final String locationName;
+  final double latitude;
+  final double longitude;
+  final String notes;
+
+  const CreateMinyanEvent({
+    required this.prayerType,
+    required this.date,
+    required this.time,
+    required this.locationName,
+    required this.latitude,
+    required this.longitude,
+    required this.notes,
+  });
+
+  @override
+  List<Object?> get props => [prayerType, date, time, locationName, latitude, longitude, notes];
+}
+
+class UpdateMinyanEvent extends MinyanEvent {
+  final String minyanId;
+  final String prayerType;
+  final String date;
+  final String time;
+  final String locationName;
+  final double latitude;
+  final double longitude;
+  final String notes;
+
+  const UpdateMinyanEvent({
+    required this.minyanId,
+    required this.prayerType,
+    required this.date,
+    required this.time,
+    required this.locationName,
+    required this.latitude,
+    required this.longitude,
+    required this.notes,
+  });
+
+  @override
+  List<Object?> get props => [minyanId, prayerType, date, time, locationName, latitude, longitude, notes];
+}
+
 // States
 abstract class MinyanState extends Equatable {
   const MinyanState();
@@ -190,14 +238,16 @@ class MinyanError extends MinyanState {
 class MinyanActionSuccess extends MinyanState {
   final String message;
   final String action;
+  final Minyan? createdMinyan;
 
   const MinyanActionSuccess({
     required this.message,
     required this.action,
+    this.createdMinyan,
   });
 
   @override
-  List<Object?> get props => [message, action];
+  List<Object?> get props => [message, action, createdMinyan];
 }
 
 class UserPreferencesLoaded extends MinyanState {
@@ -245,6 +295,8 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     on<RefreshMinyansEvent>(_onRefreshMinyans);
     on<LoadUserPreferencesEvent>(_onLoadUserPreferences);
     on<LoadPrayerTimesEvent>(_onLoadPrayerTimes);
+    on<CreateMinyanEvent>(_onCreateMinyan);
+    on<UpdateMinyanEvent>(_onUpdateMinyan);
   }
 
   Future<void> _onLoadMyMinyans(
@@ -485,6 +537,64 @@ class MinyanBloc extends Bloc<MinyanEvent, MinyanState> {
     } catch (e) {
       print('[MinyanBloc] Failed to load prayer times: $e');
       // Non-blocking - don't emit error state
+    }
+  }
+
+  Future<void> _onCreateMinyan(
+    CreateMinyanEvent event,
+    Emitter<MinyanState> emit,
+  ) async {
+    try {
+      final createdMinyan = await _minyanRepository.createMinyan(
+        prayerType: event.prayerType,
+        date: event.date,
+        time: event.time,
+        locationName: event.locationName,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        notes: event.notes,
+      );
+      
+      // Automatically publish the minyan after creation
+      final publishedMinyan = await _minyanRepository.publishMinyan(createdMinyan.id);
+      
+      emit(MinyanActionSuccess(
+        message: 'Minyan created and published successfully',
+        action: 'created',
+        createdMinyan: publishedMinyan,
+      ));
+      // Refresh the list after creation
+      add(const LoadMyMinyansEvent());
+    } catch (e) {
+      emit(MinyanError('Failed to create minyan: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onUpdateMinyan(
+    UpdateMinyanEvent event,
+    Emitter<MinyanState> emit,
+  ) async {
+    try {
+      final updatedMinyan = await _minyanRepository.updateMinyan(
+        minyanId: event.minyanId,
+        prayerType: event.prayerType,
+        date: event.date,
+        time: event.time,
+        locationName: event.locationName,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        notes: event.notes,
+      );
+      
+      emit(MinyanActionSuccess(
+        message: 'Minyan updated successfully',
+        action: 'updated',
+        createdMinyan: updatedMinyan,
+      ));
+      // Refresh the list after update
+      add(const LoadMyMinyansEvent());
+    } catch (e) {
+      emit(MinyanError('Failed to update minyan: ${e.toString()}'));
     }
   }
 }
