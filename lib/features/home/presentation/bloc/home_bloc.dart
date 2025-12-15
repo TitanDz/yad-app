@@ -113,6 +113,21 @@ class ClearRouteEvent extends HomeEvent {
   const ClearRouteEvent();
 }
 
+class ShowMinyanDetailsEvent extends HomeEvent {
+  /// Show minyan details in a bottom sheet
+  final Minyan minyan;
+  
+  const ShowMinyanDetailsEvent(this.minyan);
+  
+  @override
+  List<Object?> get props => [minyan];
+}
+
+class ClearSelectedMinyanEvent extends HomeEvent {
+  /// Clear the selected minyan to allow re-selection of the same marker
+  const ClearSelectedMinyanEvent();
+}
+
 // States
 abstract class HomeState extends Equatable {
   const HomeState();
@@ -230,6 +245,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<RefreshNearbyMiniyansEvent>(_onRefreshNearbyMinyans);
     on<DrawRouteEvent>(_onDrawRoute);
     on<ClearRouteEvent>(_onClearRoute);
+    on<ShowMinyanDetailsEvent>(_onShowMinyanDetails);
+    on<ClearSelectedMinyanEvent>(_onClearSelectedMinyan);
   }
 
   Future<void> _onInitializeMap(
@@ -354,6 +371,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             debugPrint('🛍️ Minyan marker tapped: minyan_${minyan.id}');
             // Dispatch marker select event to BLoC
             add(SelectMarkerEvent(minyan.id, isMinyan: true));
+            // Show minyan details sheet
+            add(ShowMinyanDetailsEvent(minyan));
             // Dispatch route drawing event
             if (state is HomeMapReady) {
               final currentState = state as HomeMapReady;
@@ -685,8 +704,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       if (event.isMinyan) {
         // Handle minyan marker selection
-        // This would typically update the selected minyan
-        emit(currentState); // Placeholder for minyan selection logic
+        final minyan = currentState.minyans.firstWhere(
+          (m) => m.id == event.markerId,
+          orElse: () => throw Exception('Minyan not found'),
+        );
+        emit(currentState.copyWith(selectedMinyan: minyan));
       } else {
         // Handle synagogue marker selection
         final synagogue = currentState.synagogues.firstWhere(
@@ -767,6 +789,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             debugPrint('🛍️ Minyan marker tapped: minyan_${minyan.id}');
             // Dispatch marker select event to BLoC
             add(SelectMarkerEvent(minyan.id, isMinyan: true));
+            // Show minyan details sheet
+            add(ShowMinyanDetailsEvent(minyan));
             // Dispatch route drawing event
             if (state is HomeMapReady) {
               final currentState = state as HomeMapReady;
@@ -924,5 +948,27 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     } catch (e) {
       debugPrint('❌ Error clearing route: $e');
     }
+  }
+
+  /// Handle showing minyan details in bottom sheet
+  Future<void> _onShowMinyanDetails(
+    ShowMinyanDetailsEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    // This event is handled by the UI layer (home_page.dart) via BlocListener
+    // The BLoC just acknowledges receipt of the event for potential logging/tracking
+    debugPrint('👀 ShowMinyanDetailsEvent received for minyan: ${event.minyan.id}');
+  }
+
+  /// Handle clearing the selected minyan
+  Future<void> _onClearSelectedMinyan(
+    ClearSelectedMinyanEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    if (state is! HomeMapReady) return;
+    final currentState = state as HomeMapReady;
+    
+    // Clear the selected minyan so tapping the same marker again will trigger selection
+    emit(currentState.copyWith(selectedMinyan: null as Minyan?));
   }
 }

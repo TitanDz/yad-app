@@ -4,3 +4,4 @@ export 'place_card.dart';
 export 'location_permission_dialog.dart';
 export 'availability_toggle_widget.dart';
 export 'quick_action_fab.dart';
+export 'minyan_summary_sheet.dart';
