@@ -10,6 +10,7 @@ import 'package:yad_app/features/home/domain/entities/place.dart';
 import 'package:yad_app/features/home/domain/entities/user_location.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
 import 'package:yad_app/core/services/marker_builder.dart';
+import 'package:yad_app/core/services/routing_service.dart';
 
 // Events
 abstract class HomeEvent extends Equatable {
@@ -91,6 +92,27 @@ class RefreshNearbyMiniyansEvent extends HomeEvent {
   List<Object?> get props => [latitude, longitude];
 }
 
+class DrawRouteEvent extends HomeEvent {
+  /// Draw a route from user's current location to the selected minyan
+  final LatLng origin;
+  final LatLng destination;
+  final String minyanId;
+
+  const DrawRouteEvent({
+    required this.origin,
+    required this.destination,
+    required this.minyanId,
+  });
+
+  @override
+  List<Object?> get props => [origin, destination, minyanId];
+}
+
+class ClearRouteEvent extends HomeEvent {
+  /// Clear the displayed route from the map
+  const ClearRouteEvent();
+}
+
 // States
 abstract class HomeState extends Equatable {
   const HomeState();
@@ -116,6 +138,8 @@ class HomeMapReady extends HomeState {
   final List<Place> synagogues;
   final Minyan? selectedMinyan;
   final Place? selectedSynagogue;
+  final Set<Polyline> polylines;
+  final String? selectedRouteMinyanId;
 
   const HomeMapReady({
     this.userLocation,
@@ -126,6 +150,8 @@ class HomeMapReady extends HomeState {
     this.synagogues = const [],
     this.selectedMinyan,
     this.selectedSynagogue,
+    this.polylines = const {},
+    this.selectedRouteMinyanId,
   });
 
   HomeMapReady copyWith({
@@ -137,6 +163,8 @@ class HomeMapReady extends HomeState {
     List<Place>? synagogues,
     Minyan? selectedMinyan,
     Place? selectedSynagogue,
+    Set<Polyline>? polylines,
+    String? selectedRouteMinyanId,
   }) {
     return HomeMapReady(
       userLocation: userLocation ?? this.userLocation,
@@ -147,6 +175,8 @@ class HomeMapReady extends HomeState {
       synagogues: synagogues ?? this.synagogues,
       selectedMinyan: selectedMinyan ?? this.selectedMinyan,
       selectedSynagogue: selectedSynagogue ?? this.selectedSynagogue,
+      polylines: polylines ?? this.polylines,
+      selectedRouteMinyanId: selectedRouteMinyanId ?? this.selectedRouteMinyanId,
     );
   }
 
@@ -160,6 +190,8 @@ class HomeMapReady extends HomeState {
         synagogues,
         selectedMinyan,
         selectedSynagogue,
+        polylines,
+        selectedRouteMinyanId,
       ];
 }
 
@@ -196,6 +228,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<UpdateMapCameraEvent>(_onUpdateMapCamera);
     on<ClearSearchEvent>(_onClearSearch);
     on<RefreshNearbyMiniyansEvent>(_onRefreshNearbyMinyans);
+    on<DrawRouteEvent>(_onDrawRoute);
+    on<ClearRouteEvent>(_onClearRoute);
   }
 
   Future<void> _onInitializeMap(
@@ -253,6 +287,28 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             snippet: '${place.placeType}\n${place.address}',
           ),
           icon: synagogueMarkerIcon,
+          onTap: () {
+            debugPrint('🛍️ Synagogue marker tapped: place_${place.id}');
+            // Dispatch marker select event to BLoC
+            add(SelectMarkerEvent(place.id, isMinyan: false));
+            // Dispatch route drawing event
+            if (state is HomeMapReady) {
+              final currentState = state as HomeMapReady;
+              // Use current location or fallback to NYC
+              final originLocation = currentState.userLocation ?? 
+                UserLocation(latitude: 40.7128, longitude: -74.0060, accuracy: 0, address: 'NYC');
+              final userLocation = LatLng(
+                originLocation.latitude,
+                originLocation.longitude,
+              );
+              final synagogueLocation = LatLng(place.latitude, place.longitude);
+              add(DrawRouteEvent(
+                origin: userLocation,
+                destination: synagogueLocation,
+                minyanId: place.id,
+              ));
+            }
+          },
         );
       }).toSet();
 
@@ -294,6 +350,28 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             snippet: '${minyan.prayerType} at ${minyan.time}\nParticipants: ${minyan.participantCount}',
           ),
           icon: minyanMarkerIcon,
+          onTap: () {
+            debugPrint('🛍️ Minyan marker tapped: minyan_${minyan.id}');
+            // Dispatch marker select event to BLoC
+            add(SelectMarkerEvent(minyan.id, isMinyan: true));
+            // Dispatch route drawing event
+            if (state is HomeMapReady) {
+              final currentState = state as HomeMapReady;
+              // Use current location or fallback to NYC
+              final originLocation = currentState.userLocation ?? 
+                UserLocation(latitude: 40.7128, longitude: -74.0060, accuracy: 0, address: 'NYC');
+              final userLocation = LatLng(
+                originLocation.latitude,
+                originLocation.longitude,
+              );
+              final minyanLocation = LatLng(minyan.latitude, minyan.longitude);
+              add(DrawRouteEvent(
+                origin: userLocation,
+                destination: minyanLocation,
+                minyanId: minyan.id,
+              ));
+            }
+          },
         );
       }).toSet();
 
@@ -555,6 +633,27 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             snippet: '${place.placeType}\n${place.address}',
           ),
           icon: synagogueMarkerIcon,
+          onTap: () {
+            debugPrint('🛍️ Synagogue marker tapped: place_${place.id}');
+            add(SelectMarkerEvent(place.id, isMinyan: false));
+            // Dispatch route drawing event
+            if (state is HomeMapReady) {
+              final currentState = state as HomeMapReady;
+              // Use current location or fallback to NYC
+              final originLocation = currentState.userLocation ?? 
+                UserLocation(latitude: 40.7128, longitude: -74.0060, accuracy: 0, address: 'NYC');
+              final userLocation = LatLng(
+                originLocation.latitude,
+                originLocation.longitude,
+              );
+              final synagogueLocation = LatLng(place.latitude, place.longitude);
+              add(DrawRouteEvent(
+                origin: userLocation,
+                destination: synagogueLocation,
+                minyanId: place.id,
+              ));
+            }
+          },
         );
       }).toSet();
 
@@ -664,6 +763,28 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             snippet: '${minyan.prayerType} at ${minyan.time}\nParticipants: ${minyan.participantCount}',
           ),
           icon: minyanMarkerIcon,
+          onTap: () {
+            debugPrint('🛍️ Minyan marker tapped: minyan_${minyan.id}');
+            // Dispatch marker select event to BLoC
+            add(SelectMarkerEvent(minyan.id, isMinyan: true));
+            // Dispatch route drawing event
+            if (state is HomeMapReady) {
+              final currentState = state as HomeMapReady;
+              // Use current location or fallback to NYC
+              final originLocation = currentState.userLocation ?? 
+                UserLocation(latitude: 40.7128, longitude: -74.0060, accuracy: 0, address: 'NYC');
+              final userLocation = LatLng(
+                originLocation.latitude,
+                originLocation.longitude,
+              );
+              final minyanLocation = LatLng(minyan.latitude, minyan.longitude);
+              add(DrawRouteEvent(
+                origin: userLocation,
+                destination: minyanLocation,
+                minyanId: minyan.id,
+              ));
+            }
+          },
         );
       }).toSet();
       debugPrint('   📍 Total minyan markers created during refresh: ${minyanMarkers.length}');
@@ -681,6 +802,27 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             snippet: '${place.placeType}\n${place.address}',
           ),
           icon: synagogueMarkerIcon,
+          onTap: () {
+            debugPrint('🛍️ Synagogue marker tapped: place_${place.id}');
+            add(SelectMarkerEvent(place.id, isMinyan: false));
+            // Dispatch route drawing event
+            if (state is HomeMapReady) {
+              final currentState = state as HomeMapReady;
+              // Use current location or fallback to NYC
+              final originLocation = currentState.userLocation ?? 
+                UserLocation(latitude: 40.7128, longitude: -74.0060, accuracy: 0, address: 'NYC');
+              final userLocation = LatLng(
+                originLocation.latitude,
+                originLocation.longitude,
+              );
+              final synagogueLocation = LatLng(place.latitude, place.longitude);
+              add(DrawRouteEvent(
+                origin: userLocation,
+                destination: synagogueLocation,
+                minyanId: place.id,
+              ));
+            }
+          },
         );
       }).toSet();
       debugPrint('   📍 Total place markers created during refresh: ${placeMarkers.length}');
@@ -704,6 +846,83 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     } catch (e) {
       debugPrint('❌ Error refreshing nearby minyans: $e');
       emit(HomeError('Failed to refresh nearby minyans: ${e.toString()}'));
+    }
+  }
+
+  /// Handle drawing a route from user location to selected minyan
+  Future<void> _onDrawRoute(
+    DrawRouteEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    try {
+      if (state is! HomeMapReady) {
+        debugPrint('❌ DrawRouteEvent received but state is not HomeMapReady: ${state.runtimeType}');
+        return;
+      }
+      final currentState = state as HomeMapReady;
+
+      debugPrint('🛣️ DrawRouteEvent received: origin=${event.origin}, destination=${event.destination}');
+      debugPrint('🛣️ Starting route calculation from ${event.origin} to ${event.destination}');
+      
+      // Use Google Directions API to get real routing
+      final routingService = RoutingService();
+      final routePoints = await routingService.getDirectionsRoute(
+        origin: event.origin,
+        destination: event.destination,
+        travelMode: 'driving',
+      );
+
+      debugPrint('🔍 Route points from API: ${routePoints?.length ?? 0}');
+
+      // If API fails, use fallback geodesic approximation
+      final finalRoutePoints = routePoints ?? RoutingService.generateSimpleRoute(
+        event.origin,
+        event.destination,
+        pointCount: 30,
+      );
+
+      debugPrint('🔍 Final route points (with fallback): ${finalRoutePoints.length}');
+
+      // Create polyline for the route
+      final routePolyline = RoutingService.createRoutePolyline(
+        polylineId: 'route_${event.minyanId}',
+        points: finalRoutePoints,
+        color: const Color(0xFF4285F4), // Google Blue
+        width: 5.0,
+      );
+
+      debugPrint('📄 Polyline created: ${routePolyline.polylineId}');
+
+      // Update state with ONLY the new polyline (clear previous routes)
+      emit(currentState.copyWith(
+        polylines: {routePolyline},
+        selectedRouteMinyanId: event.minyanId,
+      ));
+
+      debugPrint('✅ Route displayed with ${finalRoutePoints.length} points');
+    } catch (e) {
+      debugPrint('❌ Error drawing route: $e');
+      debugPrint('📄 Stack trace: ${StackTrace.current}');
+    }
+  }
+
+  /// Handle clearing the route from the map
+  Future<void> _onClearRoute(
+    ClearRouteEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    try {
+      if (state is! HomeMapReady) return;
+      final currentState = state as HomeMapReady;
+
+      emit(currentState.copyWith(
+        polylines: const {},
+        selectedRouteMinyanId: null,
+      ));
+
+      debugPrint('✅ Route cleared from map');
+    } catch (e) {
+      debugPrint('❌ Error clearing route: $e');
     }
   }
 }

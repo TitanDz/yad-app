@@ -53,6 +53,7 @@ dependencies:
   
   # Google Maps & Location Services
   google_maps_flutter: ^2.10.0
+  google_maps: ^8.2.0
   geolocator: ^10.1.0
   google_places_flutter: ^2.0.8
   geocoding: ^2.1.0

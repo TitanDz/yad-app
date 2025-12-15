@@ -371,7 +371,7 @@ class _HomePageState extends State<HomePage> {
       ]''';
   }
 
-  /// Handle marker tap to show detailed information
+  /// Handle marker tap to show detailed information and draw route
   void _handleMarkerTap(MarkerId markerId, HomeMapReady state) {
     final markerIdValue = markerId.value;
     if (markerIdValue.startsWith('synagogue_')) {
@@ -381,6 +381,27 @@ class _HomePageState extends State<HomePage> {
     } else if (markerIdValue.startsWith('minyan_')) {
       final minyanId = markerIdValue.replaceFirst('minyan_', '');
       context.read<HomeBloc>().add(SelectMarkerEvent(minyanId, isMinyan: true));
+      
+      // Draw route from user location to minyan
+      if (state.userLocation != null) {
+        final minyan = state.minyans.firstWhere(
+          (m) => m.id == minyanId,
+          orElse: () => throw Exception('Minyan not found'),
+        );
+        
+        final userLocation = LatLng(
+          state.userLocation!.latitude,
+          state.userLocation!.longitude,
+        );
+        final minyanLocation = LatLng(minyan.latitude, minyan.longitude);
+        
+        context.read<HomeBloc>().add(DrawRouteEvent(
+          origin: userLocation,
+          destination: minyanLocation,
+          minyanId: minyanId,
+        ));
+      }
+      
       _showPrayerLocationDetailsSheet(state, minyanId, true);
     }
   }
@@ -467,10 +488,16 @@ class _HomePageState extends State<HomePage> {
           _buildDetailRow('Time', '7:00 AM'),
           _buildDetailRow('Prayer Type', 'Shacharit'),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close),
-            label: const Text('Close'),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Close'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -755,13 +782,14 @@ class _HomePageState extends State<HomePage> {
                       return Stack(
                         children: [
                           GoogleMap(
-                            key: ValueKey('map_${state.markers.length}'),  // Force rebuild when markers change
+                            key: ValueKey('map_${state.markers.length}_${state.polylines.length}'),  // Force rebuild when markers or polylines change
                             onMapCreated: _onMapCreated,
                             initialCameraPosition: CameraPosition(
                               target: initialPosition,
                               zoom: 15.0,
                             ),
                             markers: state.markers,
+                            polylines: state.polylines,
                             myLocationEnabled: false,
                             myLocationButtonEnabled: false,
                             zoomControlsEnabled: false,
