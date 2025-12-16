@@ -1,0 +1,700 @@
+================================================================================
+PHASE 4: LOCATION VOTING - TECHNICAL REFERENCE
+================================================================================
+
+This document provides detailed technical specifications for Phase 4 implementation,
+including all events, states, data flows, and edge cases.
+
+================================================================================
+LOCATIONVOTINGBLOC - EVENT SPECIFICATIONS
+================================================================================
+
+EVENT: InitializeVotingSessionEvent
+────────────────────────────────────
+Purpose: Start a voting session for a newly formed minyan
+Triggered by: MinyanFormationBloc when MinyanFormed state emitted
+Required Input:
+  • minyan: Minyan - The auto-formed minyan object
+  • participantIds: List<String> - All 10+ confirmed users
+
+Processing Flow:
+  1. Cancel any previous voting session
+  2. Calculate votesNeeded = ceil(participantIds.length / 2)
+  3. Calculate expiresAt = minyan.createdAt + 20 minutes
+  4. Create initial suggestions list with "Central Location"
+  5. Create VotingSession object with status='active'
+  6. Start expiry timer (30-second checks)
+  7. Start consensus timer (10-second checks)
+  8. Emit VotingSessionActive state
+
+Output State: VotingSessionActive
+├─ session: VotingSession
+│  ├─ id: "voting_${minyan.id}"
+│  ├─ minyanId: minyan.id
+│  ├─ participantIds: [10+ user IDs]
+│  ├─ suggestions: [LocationSuggestion] (initially 1)
+│  ├─ votesNeeded: (e.g., 5 for 10 participants)
+│  └─ expiresAt: DateTime + 20 minutes
+└─ minutesRemaining: Int (e.g., 20)
+
+Edge Cases:
+  • Empty participantIds → LocationVotingError
+  • Minyan already voting → Cancel previous session first
+  • Zero minyan users → Use default location
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: AddLocationSuggestionEvent
+─────────────────────────────────
+Purpose: Add a new location suggestion to the voting session
+Triggered by: User clicks "Suggest Location" button in UI
+Required Input:
+  • name: String - Location name (required)
+  • address: String? - Street address (optional)
+  • latitude: Double - GPS coordinate
+  • longitude: Double - GPS coordinate
+  • userId: String - User making suggestion
+
+Validation:
+  ✓ Session must exist
+  ✓ Session.status must be 'active'
+  ✓ Location name must not be empty
+  ✓ Coordinates must be valid (lat: -90..90, lon: -180..180)
+  ✗ Duplicate locations: Allowed (users may suggest same place)
+
+Processing Flow:
+  1. Check if session exists and is active
+  2. Create LocationSuggestion object:
+     • id: "suggestion_${DateTime.now().millisecondsSinceEpoch}"
+     • type: 'user_suggested'
+     • voteCount: 0
+     • voterIds: [] (empty)
+  3. Append to session.suggestions list
+  4. Update _currentSession reference
+  5. Emit SuggestionAdded state (with new suggestion)
+  6. Emit VotingSessionActive state (refresh UI)
+
+Output States:
+  SuggestionAdded:
+  ├─ session: VotingSession (with new suggestion added)
+  └─ newSuggestion: LocationSuggestion (the new one)
+  
+  Then: VotingSessionActive (refresh list)
+
+Edge Cases:
+  • No active session → LocationVotingError("No active voting session")
+  • Session expired → LocationVotingError("Voting session is expired")
+  • Empty name → Silently ignore in UI validation layer
+  • Invalid coordinates → Still accept (validation at backend)
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: VoteForLocationEvent
+───────────────────────────
+Purpose: User votes for a location (changes vote if already voted elsewhere)
+Triggered by: User clicks vote button on LocationSuggestionCard
+Required Input:
+  • suggestionId: String - ID of location to vote for
+  • userId: String - User casting vote
+
+Vote Changing Logic (IMPORTANT):
+  ┌─ User votes for Location A
+  │  └─ Location A: voterIds=[User1]
+  │
+  └─ User later votes for Location B
+     ├─ Location A: voterIds=[] (vote REMOVED)
+     └─ Location B: voterIds=[User1] (vote ADDED)
+  
+  → One user, one active vote at any time
+
+Processing Flow:
+  1. Check if session exists and is active
+  2. Find suggestion with suggestionId
+  3. For all suggestions:
+     ├─ If suggestion.voterIds contains userId:
+     │  └─ Remove userId from voterIds, decrement voteCount
+     └─ If this is the target suggestion:
+        └─ Add userId to voterIds, increment voteCount
+  4. Update _currentSession
+  5. Emit VoteCasted state
+  6. Emit VotingSessionActive state (refresh UI)
+  7. Automatically trigger CheckConsensusEvent
+
+Output States:
+  VoteCasted:
+  ├─ session: VotingSession (updated votes)
+  └─ votedSuggestionId: String (the one voted for)
+  
+  Then: VotingSessionActive (refresh)
+  Then: Automatic CheckConsensusEvent
+
+Edge Cases:
+  • User votes same location twice → Idempotent (no change)
+  • User votes immediately after previous vote → Overrides previous
+  • Suggestion not found → Silently ignore
+  • Session not active → VotingSessionError
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: CheckConsensusEvent
+──────────────────────────
+Purpose: Check if consensus has been reached
+Triggered by: Automatically every 10 seconds (via _startConsensusCheckTimer)
+           OR Manually after each vote
+Required Input: None
+
+Consensus Definition:
+  • Leading suggestion (highest voteCount)
+  • Has >= votesNeeded votes
+  • Example: 10 participants need ceil(10/2)=5 votes
+
+Processing Flow:
+  1. Check if session is null → return
+  2. Check if session.status != 'active' → return
+  3. Call session.hasConsensus():
+     ├─ Get leading suggestion via getLeadingSuggestion()
+     └─ Check: leading.voteCount >= votesNeeded
+  4. If consensus reached:
+     ├─ Update session.status = 'consensus_reached'
+     ├─ Set session.consensusLocation = winning suggestion
+     ├─ Cancel timers
+     └─ Emit ConsensusReached state
+  5. If no consensus:
+     └─ Do nothing (continue voting)
+
+Output State:
+  ConsensusReached:
+  ├─ session: VotingSession (status='consensus_reached')
+  ├─ winningLocation: LocationSuggestion
+  └─ reason: String ('majority_votes')
+
+Edge Cases:
+  • Tie: Multiple suggestions with same highest count
+    → getLeadingSuggestion() returns first in list
+    → Consider secondary tiebreaker: highest avg distance
+  • All suggestions tied at 0 → No consensus possible
+  • Only 1 participant → votesNeeded=1, single vote = consensus
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: FinalizeVotingEvent
+──────────────────────────
+Purpose: Manually finalize voting before expiry (if consensus reached)
+Triggered by: User clicks "Finalize" button (appears when consensus or timeout)
+Required Input: None
+
+Processing Flow:
+  1. Check if session exists
+  2. If hasConsensus():
+     ├─ Set status = 'consensus_reached'
+     ├─ Set consensusLocation = getLeadingSuggestion()
+     ├─ Set reason = 'majority_votes'
+     └─ Emit ConsensusReached
+  3. Else:
+     ├─ Get highest-voted suggestion
+     ├─ Set status = 'consensus_reached'
+     ├─ Set consensusLocation = highest
+     ├─ Set reason = 'highest_votes'
+     └─ Emit ConsensusReached
+  4. Cancel all timers
+
+Output State: ConsensusReached
+├─ session: VotingSession
+├─ winningLocation: LocationSuggestion
+└─ reason: String ('majority_votes' or 'highest_votes')
+
+Edge Cases:
+  • No suggestions → LocationVotingError
+  • Session already finalized → Emit ConsensusReached again (idempotent)
+
+════════════════════════════════════════════════════════════════════════════
+
+EVENT: CancelVotingEvent
+────────────────────────
+Purpose: Cancel voting session entirely
+Triggered by: User dismisses voting sheet, or system cleanup
+Required Input: None
+
+Processing Flow:
+  1. Cancel expiry timer
+  2. Cancel consensus timer
+  3. Set _currentSession = null
+  4. Emit LocationVotingInitial
+
+Output State: LocationVotingInitial
+
+Usage: Called when:
+  • User closes voting sheet without finalizing
+  • System needs to reset for new minyan
+  • Voting expired without consensus
+
+================================================================================
+VOTINGSESSION - DATA STRUCTURE SPECIFICATIONS
+================================================================================
+
+VotingSession Properties:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ id: String                                                              │
+│  └─ Unique identifier (format: "voting_${minyan.id}")                   │
+│                                                                          │
+│ minyanId: String                                                        │
+│  └─ Reference to associated Minyan                                      │
+│                                                                          │
+│ prayerType: String                                                      │
+│  └─ Prayer type (e.g., "Mincha", "Shacharit", "Maariv")                │
+│                                                                          │
+│ prayerTime: DateTime                                                    │
+│  └─ When the prayer starts                                              │
+│                                                                          │
+│ participantIds: List<String>                                            │
+│  └─ All users who confirmed for minyan (10+ users)                      │
+│  └─ Immutable throughout voting session                                 │
+│                                                                          │
+│ suggestions: List<LocationSuggestion>                                   │
+│  └─ All location options (initially 1: "Central Location")              │
+│  └─ Sorted by voteCount descending in UI                                │
+│                                                                          │
+│ status: String                                                          │
+│  ├─ 'active' - Voting in progress                                       │
+│  ├─ 'consensus_reached' - Majority voted (>= votesNeeded)               │
+│  └─ 'expired' - Time limit exceeded                                     │
+│                                                                          │
+│ consensusLocation: LocationSuggestion?                                  │
+│  └─ Winning location (null until status='consensus_reached')            │
+│                                                                          │
+│ votesNeeded: Int                                                        │
+│  └─ Majority threshold = ceil(participantIds.length / 2)                │
+│  └─ Example: 10 participants → votesNeeded = 5                          │
+│  └─ Examples:                                                           │
+│      2-3 participants → 1 vote needed                                   │
+│      4-5 participants → 2 votes needed                                  │
+│      6-7 participants → 3 votes needed                                  │
+│      10 participants → 5 votes needed                                   │
+│      21 participants → 11 votes needed                                  │
+│                                                                          │
+│ createdAt: DateTime                                                     │
+│  └─ When voting session started                                         │
+│                                                                          │
+│ expiresAt: DateTime?                                                    │
+│  └─ When voting automatically expires                                   │
+│  └─ Formula: prayerTime - 20 minutes                                    │
+│  └─ Example: Prayer at 15:00 → expiresAt = 14:40                        │
+│                                                                          │
+│ winningReason: String?                                                  │
+│  └─ How consensus was achieved:                                         │
+│  ├─ 'majority_votes' - >= votesNeeded votes                             │
+│  ├─ 'all_agreed' - 100% of participants voted same                      │
+│  ├─ 'highest_average_distance' - Best geographic center                 │
+│  └─ 'finalized' - Manual finalize before expiry                         │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Helper Methods:
+
+getLeadingSuggestion() → LocationSuggestion?
+  ├─ Sorts suggestions by voteCount descending
+  ├─ Returns top one (or null if empty)
+  └─ Used for determining winner
+
+hasConsensus() → Boolean
+  ├─ Checks if leading suggestion has >= votesNeeded
+  └─ Example: 5 votes >= 5 needed = true
+
+isExpired() → Boolean
+  ├─ Compares DateTime.now() against expiresAt
+  └─ Returns true if past expiry time
+
+getMinutesUntilExpiry() → Integer
+  ├─ Calculates difference: expiresAt - now
+  ├─ Returns as minutes (rounded down)
+  └─ Example: 14:38 with 14:40 expiry = 2 minutes
+
+================================================================================
+LOCATIONSSUGGESTION - DATA STRUCTURE SPECIFICATIONS
+================================================================================
+
+LocationSuggestion Properties:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ id: String                                                              │
+│  └─ Unique identifier (generated per suggestion)                        │
+│                                                                          │
+│ name: String (REQUIRED)                                                 │
+│  └─ Location name: "Beth Jacob Shul", "Coffee Shop", "Park"             │
+│                                                                          │
+│ address: String? (OPTIONAL)                                             │
+│  └─ Street address (nullable)                                           │
+│  └─ Example: "123 Main St, New York, NY 10001"                          │
+│                                                                          │
+│ latitude: Double                                                        │
+│  └─ GPS coordinate (-90 to 90)                                          │
+│                                                                          │
+│ longitude: Double                                                       │
+│  └─ GPS coordinate (-180 to 180)                                        │
+│                                                                          │
+│ voteCount: Int                                                          │
+│  └─ Current number of votes for this location                           │
+│  └─ Range: 0 to participantIds.length                                   │
+│  └─ Initial: 0 for all suggestions                                      │
+│                                                                          │
+│ voterIds: List<String>                                                  │
+│  └─ User IDs who voted for this location                                │
+│  └─ Length = voteCount                                                  │
+│  └─ Used to enforce single-vote-per-user                                │
+│                                                                          │
+│ suggestedByUserId: String                                               │
+│  ├─ User who suggested this location                                    │
+│  ├─ 'system' for auto-generated (centroid)                              │
+│  └─ Used for crediting suggestion origin                                │
+│                                                                          │
+│ suggestedAt: DateTime                                                   │
+│  └─ When suggestion was added                                           │
+│                                                                          │
+│ type: String                                                            │
+│  ├─ 'centroid' - Auto-calculated center point                           │
+│  ├─ 'synagogue' - Known synagogue location                              │
+│  └─ 'user_suggested' - User-added location                              │
+│                                                                          │
+│ averageDistance: Double? (OPTIONAL)                                     │
+│  └─ Average distance (km) from all participants                         │
+│  └─ Calculated by CentroidCalculationService.calculateAverageDistance() │
+│  └─ Shows user how far location is from group                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Type-Specific Characteristics:
+
+CENTROID ('centroid')
+  ├─ name: "Central Location"
+  ├─ suggestedByUserId: 'system'
+  ├─ address: null
+  ├─ latitude/longitude: calculated center point
+  └─ Created automatically, always present
+
+SYNAGOGUE ('synagogue')
+  ├─ name: Real synagogue name
+  ├─ address: Real address
+  ├─ latitude/longitude: Real coordinates
+  └─ Could come from backend location database
+
+USER_SUGGESTED ('user_suggested')
+  ├─ name: User provided
+  ├─ address: User provided (optional)
+  ├─ latitude/longitude: User selected or searched
+  └─ suggestedByUserId: actual user ID
+
+================================================================================
+CENTROIDCALCULATIONSERVICE - SPECIFICATIONS
+================================================================================
+
+Static Methods:
+
+calculateCentroid(List<GeoPoint>) → GeoPoint
+────────────────────────────────────────────
+Purpose: Find geographic center point of multiple locations
+Algorithm: Spherical average (not simple arithmetic mean)
+Math: Projects to 3D Cartesian coords, averages, converts back to lat/lon
+
+Input:
+  • List of GeoPoint objects (minimum 1 point)
+  • Each GeoPoint: latitude (-90..90), longitude (-180..180)
+
+Output: GeoPoint
+  • Single averaged latitude/longitude
+
+Example:
+  Input: [NYC (40.7°, -74°), Boston (42.4°, -71.1°)]
+  Output: GeoPoint(41.5°, -72.5°) [between two cities]
+
+Edge Cases:
+  • Single point: Returns that point
+  • Empty list: Throws ArgumentError
+  • Antipodal points (opposite sides of Earth): Handles correctly
+  • High latitude (near poles): Still accurate
+
+Usage: Creating "Central Location" suggestion
+
+────────────────────────────────────────────────────────────────────────────
+
+calculateDistance(GeoPoint, GeoPoint) → Double
+──────────────────────────────────────────────
+Purpose: Calculate distance between two geographic points
+Algorithm: Haversine formula (great-circle distance)
+Unit: Kilometers
+
+Formula:
+  a = sin²(Δlat/2) + cos(lat1) × cos(lat2) × sin²(Δlon/2)
+  c = 2 × asin(√a)
+  distance = EARTH_RADIUS_KM × c
+  where EARTH_RADIUS_KM = 6371.0 km
+
+Input: Two GeoPoint objects
+
+Output: Double (kilometers)
+
+Examples:
+  NYC (40.7, -74.0) ↔ Boston (42.4, -71.1) ≈ 308 km
+  NYC ↔ NYC = 0 km
+  NYC ↔ London ≈ 5570 km
+
+Accuracy: ±0.5% for most distances
+
+Usage:
+  • Calculating distance for UI display
+  • Determining nearest location option
+  • Filtering locations by radius
+
+────────────────────────────────────────────────────────────────────────────
+
+calculateAverageDistance(GeoPoint, List<GeoPoint>) → Double
+────────────────────────────────────────────────────────────
+Purpose: Find mean distance from center point to all other points
+Algorithm: Sum of distances / count of points
+
+Input:
+  • center: GeoPoint (usually the location suggestion)
+  • points: List<GeoPoint> (all participant locations)
+
+Output: Double (kilometers)
+
+Example:
+  Center: "Central Location" (40.7, -74.0)
+  Users:  [User1(40.71, -74.01), User2(40.72, -74.02), ..., User10(...)]
+  Output: 0.85 km (average distance from center)
+
+Usage:
+  • Show on LocationSuggestionCard: "Avg 0.85 km away"
+  • Compare suggestions: "Centroid is 0.5 km, Shul is 2.1 km"
+  • Tiebreaker: If tied votes, choose lowest average distance
+
+────────────────────────────────────────────────────────────────────────────
+
+getDistancesFromPoint(GeoPoint, List<GeoPoint>) → Map<int, Double>
+──────────────────────────────────────────────────────────────────
+Purpose: Get distance from one point to each in a list
+Algorithm: calculateDistance() for each pair
+
+Input:
+  • point: GeoPoint (center)
+  • otherPoints: List<GeoPoint> (all participants)
+
+Output: Map<int, double>
+  • Key: index in otherPoints list
+  • Value: distance in km
+
+Example:
+  {
+    0: 0.5,   // User 0 is 0.5 km from center
+    1: 1.2,   // User 1 is 1.2 km from center
+    2: 0.8,   // User 2 is 0.8 km from center
+    ...
+  }
+
+Usage:
+  • Analyzing distribution of participants
+  • Finding outlier users (very far from center)
+
+────────────────────────────────────────────────────────────────────────────
+
+calculateBoundingBox(List<GeoPoint>) → Map<String, Double>
+────────────────────────────────────────────────────────────
+Purpose: Get geographic bounds of a set of points (for map display)
+Algorithm: Find min/max latitude and longitude
+
+Input: List<GeoPoint>
+
+Output: Map with keys:
+  {
+    'north': max latitude
+    'south': min latitude
+    'east': max longitude
+    'west': min longitude
+  }
+
+Example:
+  Points: [NYC(40.7, -74), Boston(42.4, -71), Philly(39.9, -75.2)]
+  Output: {
+    'north': 42.4,
+    'south': 39.9,
+    'east': -71.0,
+    'west': -75.2,
+  }
+
+Usage:
+  • Auto-fit map to show all locations
+  • Calculate map zoom level
+  • Determine visible area
+
+────────────────────────────────────────────────────────────────────────────
+
+formatDistance(Double) → String
+───────────────────────────────
+Purpose: Convert raw distance to human-readable format
+Algorithm: Conditional formatting based on magnitude
+
+Input: Double (kilometers)
+
+Output: String
+  • < 1 km: "500m", "750m" (rounded meters)
+  • 1-10 km: "1.25km", "5.47km" (2 decimals)
+  • ≥ 10 km: "125.5km", "354.2km" (1 decimal)
+
+Examples:
+  0.5 → "500m"
+  0.05 → "50m"
+  1.234 → "1.23km"
+  10.567 → "10.6km"
+  350.789 → "350.8km"
+
+Usage:
+  • Display on LocationSuggestionCard
+  • Show user distance from center
+  • Show average group distance
+
+────────────────────────────────────────────────────────────────────────────
+
+isValidCoordinate(Double, Double) → Boolean
+────────────────────────────────────────────
+Purpose: Validate GPS coordinates are within legal ranges
+Algorithm: Range checking
+
+Input:
+  • latitude: -90 to 90
+  • longitude: -180 to 180
+
+Output: Boolean
+  • true: Valid coordinates
+  • false: Out of range
+
+Examples:
+  (40.7, -74.0) → true
+  (91.0, 0.0) → false (latitude > 90)
+  (45.0, 181.0) → false (longitude > 180)
+  (-90, -180) → true (both poles/date line)
+
+Usage:
+  • Validate user-suggested locations before saving
+  • Prevent data corruption from invalid coordinates
+
+================================================================================
+TIMER MANAGEMENT
+================================================================================
+
+Expiry Timer (_startExpiryTimer)
+────────────────────────────────
+Interval: 30 seconds
+Purpose: Check if voting session has exceeded expiresAt time
+
+Action Every 30 Seconds:
+  1. If session.isExpired():
+     ├─ Cancel this timer
+     ├─ Cancel consensus timer
+     ├─ Get winning location (highest votes)
+     ├─ Set status = 'expired'
+     └─ Emit VotingExpired state
+  2. Else:
+     └─ Emit VotingSessionActive with updated minutesRemaining
+
+Cleanup: Cancels in close() method
+
+────────────────────────────────────────────────────────────────────────────
+
+Consensus Check Timer (_startConsensusCheckTimer)
+───────────────────────────────────────────────────
+Interval: 10 seconds
+Purpose: Automatically check if consensus has been reached
+
+Action Every 10 Seconds:
+  If session.status == 'active':
+    └─ Trigger CheckConsensusEvent (runs _onCheckConsensus)
+       ├─ If hasConsensus():
+       │  └─ Emit ConsensusReached
+       └─ Else:
+          └─ Continue (next check in 10 seconds)
+
+Cleanup: Cancels in close() method
+
+Optimization Notes:
+  • Both timers cancel when consensus reached
+  • No unnecessary checks after finalization
+  • Clean resource disposal prevents memory leaks
+
+================================================================================
+EDGE CASE HANDLING
+================================================================================
+
+Empty Voting (No Suggestions)
+─────────────────────────────
+Scenario: All users somehow leave before voting starts
+Handling: Never occurs - system adds "Central Location" on initialization
+
+No Votes Cast
+─────────────
+Scenario: All users ignore voting, time expires
+Current Behavior: Default to "Central Location" (first suggestion)
+Improvement: Could use highest averageDistance calculation
+
+All Votes Tied
+──────────────
+Scenario: Multiple locations with same vote count
+Current: getLeadingSuggestion() returns first in list
+Better: Secondary tiebreaker by lowest averageDistance
+
+Single Participant (Edge Case, Shouldn't Happen)
+────────────────────────────────────────────────
+Scenario: Only 1 user forms "minyan" (system bug?)
+votesNeeded: ceil(1/2) = 1
+Result: User's single vote = consensus
+
+User Votes Multiple Times
+──────────────────────────
+Scenario: User taps vote button twice quickly
+Result: Idempotent - vote already counted, no change
+Prevented by: Vote change logic (removes old, adds new)
+
+Session Already Voting
+──────────────────────
+Scenario: New minyan while previous voting active
+Handling: Cancel previous session, initialize new one
+
+================================================================================
+PRODUCTION INTEGRATION CHECKLIST
+================================================================================
+
+Data Layer:
+  ☐ Replace MockActiveUsersDataSource with real API
+  ☐ Add voting persistence to Firestore/PostgreSQL
+  ☐ Store voting history for analytics
+  ☐ Add location suggestion database
+
+API Endpoints:
+  ☐ GET /voting/:sessionId (fetch current voting)
+  ☐ POST /voting/:sessionId/votes (record vote)
+  ☐ POST /voting/:sessionId/suggestions (add location)
+  ☐ POST /voting/:sessionId/finalize (save result)
+
+Real-time Updates:
+  ☐ WebSocket for vote progress
+  ☐ Real-time participant count
+  ☐ Live consensus detection push
+
+Analytics:
+  ☐ Track voting completion rate
+  ☐ Monitor consensus reach time
+  ☐ Analyze popular locations
+  ☐ User satisfaction with auto-minyans
+
+User Experience:
+  ☐ Polish animations for vote counts
+  ☐ Add loading states
+  ☐ Test on all device sizes
+  ☐ Accessibility audit (dark mode, text sizes)
+
+Testing:
+  ☐ Unit tests for Bloc state transitions
+  ☐ Widget tests for UI rendering
+  ☐ Integration tests for full flow
+  ☐ Load testing with 100+ concurrent users
+
+================================================================================
+END OF TECHNICAL REFERENCE
+================================================================================

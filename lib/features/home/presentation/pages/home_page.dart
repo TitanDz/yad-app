@@ -10,10 +10,16 @@ import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/availability_bloc.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
 import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
+import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
+import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
+import 'package:yad_app/core/services/prayer_countdown_service.dart';
+import 'package:yad_app/core/services/user_preferences_manager.dart';
+import 'package:yad_app/features/home/presentation/pages/prayers_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:geocoding/geocoding.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -35,6 +41,10 @@ class _HomePageState extends State<HomePage> {
   Timer? _autocompleteDebounceTimer;
   final String _userId = 'user_123'; // Placeholder - should get from auth
   bool _refreshTriggered = false; // Flag to prevent duplicate refresh triggers
+  late PrayerCountdownService _prayerCountdownService;
+  List<PrayerTimeInfo> _prayerTimes = [];
+  String _cityCountry = '';
+  bool _prayerTimesLoading = true;
 
   @override
   void initState() {
@@ -46,16 +56,22 @@ class _HomePageState extends State<HomePage> {
     _homeBloc = getIt<HomeBloc>();
     // Initialize AvailabilityBloc
     _availabilityBloc = getIt<AvailabilityBloc>();
+    // Initialize PrayerCountdownService
+    _prayerCountdownService = getIt<PrayerCountdownService>();
+    
     // Add initialization event to HomeBloc only once
     _homeBloc.add(const InitializeMapEvent());
     // Initialize availability tracking
     _availabilityBloc.add(InitializeAvailabilityEvent(userId: _userId));
     
     // Reset refresh flag when the page comes back into focus
-    // This ensures auto-refresh works when returning from create minyan
     _refreshTriggered = false;
     
-    // BlocListener in build() will handle auto-refresh when map is ready
+    // Initialize prayer times with default location
+    _initializePrayerTimes();
+    
+    // Get user location and city/country
+    _getUserLocationAndCity();
   }
 
   @override
@@ -64,6 +80,7 @@ class _HomePageState extends State<HomePage> {
     _searchController.dispose();
     _mapController?.dispose();
     _autocompleteDebounceTimer?.cancel();
+    _prayerCountdownService.dispose();
     // Don't dispose _minyanBloc here as it's managed by service locator
     super.dispose();
   }
@@ -78,6 +95,86 @@ class _HomePageState extends State<HomePage> {
       _autocompleteResults = [];
     });
     context.read<HomeBloc>().add(const ClearSearchEvent());
+  }
+
+  /// Initialize prayer times with current location
+  void _initializePrayerTimes() {
+    try {
+      // Default location (will be updated when user location is obtained)
+      const double defaultLat = 40.7128; // NYC
+      const double defaultLon = -74.0060;
+      final timeZone = UserPreferencesManager.detectTimeZone();
+      
+      _prayerCountdownService.initialize(
+        latitude: defaultLat,
+        longitude: defaultLon,
+        timeZone: timeZone,
+      );
+      
+      _prayerCountdownService.addListener((prayerTimes) {
+        if (mounted) {
+          setState(() {
+            _prayerTimes = prayerTimes;
+            _prayerTimesLoading = false;
+          });
+        }
+      });
+      
+      // Get initial prayer times
+      setState(() {
+        _prayerTimes = _prayerCountdownService.getPrayerTimes();
+        _prayerTimesLoading = _prayerTimes.isEmpty;
+      });
+    } catch (e) {
+      debugPrint('[HomePage] Error initializing prayer times: $e');
+      setState(() => _prayerTimesLoading = false);
+    }
+  }
+
+  /// Get user location and reverse geocode to city/country
+  Future<void> _getUserLocationAndCity() async {
+    try {
+      final homeBloc = context.read<HomeBloc>();
+      final state = homeBloc.state;
+      
+      if (state is HomeMapReady && state.userLocation != null) {
+        final location = state.userLocation!;
+        
+        // Reinitialize prayer times with actual location
+        final timeZone = UserPreferencesManager.detectTimeZone();
+        _prayerCountdownService.dispose();
+        _prayerCountdownService.initialize(
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timeZone: timeZone,
+        );
+        
+        // Reverse geocode to get city and country
+        try {
+          final placemarks = await placemarkFromCoordinates(
+            location.latitude,
+            location.longitude,
+          );
+          
+          if (placemarks.isNotEmpty) {
+            final placemark = placemarks.first;
+            final city = placemark.locality ?? placemark.administrativeArea ?? '';
+            final country = placemark.country ?? '';
+            final cityCountry = [city, country].where((s) => s.isNotEmpty).join(', ');
+            
+            if (mounted) {
+              setState(() {
+                _cityCountry = cityCountry;
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint('[HomePage] Error reverse geocoding: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[HomePage] Error getting user location: $e');
+    }
   }
 
   Future<void> _fetchAutocompleteResults(String query) async {
@@ -275,6 +372,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildPrayerTabIcon(int tabIndex) {
+    final isSelected = _selectedIndex == tabIndex;
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isSelected ? const Color(0xFFC9DDFC) : Colors.transparent,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.schedule,
+          color: AppTheme.divinity,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
   String _getDarkMapStyle() {
     return '''[
         {
@@ -433,12 +549,12 @@ class _HomePageState extends State<HomePage> {
                 label: 'Minyans',
               ),
               BottomNavigationBarItem(
-                icon: _buildNotificationBellIcon(2),
-                label: 'Notifications',
+                icon: _buildPrayerTabIcon(2),
+                label: 'Prayers',
               ),
               BottomNavigationBarItem(
-                icon: _buildBottomNavIcon('assets/images/Navbar/user.svg', 3),
-                label: 'Profile',
+                icon: _buildNotificationBellIcon(3),
+                label: 'Notifications',
               ),
             ],
           ),
@@ -466,88 +582,117 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildPageContent(BuildContext context) {
     if (_selectedIndex == 0) {
-      // Map view
+      // Map view - optimized for maximum map visibility
       return Column(
         children: [
-          // Top Header Bar (Avatar, Title, Settings) - Extends to top
+          // Enhanced app header bar (Avatar, Title, Settings) - improved for visibility and safe area
           Container(
             color: AppTheme.primary,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: Column(
-              children: [
-                // Status bar spacing
-                SizedBox(height: MediaQuery.of(context).padding.top),
-        // Header content
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Avatar
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    // Title
-                    Text(
-                      'The10th',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    // Settings Button
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.settings,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left side: Avatar
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.person,
                           color: Colors.white,
                           size: 24,
                         ),
-                        onPressed: () {
-                          context.push('/settings');
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
                       ),
-                    ),
-                  ],
-                ),
-                // Availability Toggle
-                const SizedBox(height: 12),
-                BlocProvider<AvailabilityBloc>.value(
-                  value: _availabilityBloc,
-                  child: AvailabilityToggleWidget(
-                    userId: _userId,
-                    onAvailabilityChanged: () {
-                      // Trigger any additional updates needed
-                    },
+                      // Center: Next Prayer Info (Enhanced for readability, constrained width)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Tooltip(
+                                message: _prayerTimes.isNotEmpty
+                                    ? 'Next: ${_prayerTimes[0].name}'
+                                    : 'Prayer Times',
+                                child: Text(
+                                  _prayerTimes.isNotEmpty
+                                      ? _prayerTimes[0].name
+                                      : 'Prayer Times',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (_prayerTimes.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    _prayerTimes[0].displayStartTime,
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          color: Colors.white.withValues(alpha: 0.9),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Right side: Settings Button
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.settings,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          onPressed: () {
+                            context.push('/settings');
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Settings',
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  // Availability Toggle - enhanced spacing
+                  const SizedBox(height: 12),
+                  BlocProvider<AvailabilityBloc>.value(
+                    value: _availabilityBloc,
+                    child: AvailabilityToggleWidget(
+                      userId: _userId,
+                      onAvailabilityChanged: () {
+                        // Trigger any additional updates needed
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          // Divider
-          Container(
-            height: 0,
-            color: Colors.transparent,
-          ),
-          // Map and Overlay
+          // Map area - expanded to use remaining space (no prayer panel above it)
           Expanded(
             child: Stack(
               children: [
@@ -590,27 +735,7 @@ class _HomePageState extends State<HomePage> {
                                 ? _getDarkMapStyle()
                                 : null,
                           ),
-                          // Gradient overlay from header to map
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            height: 150,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    AppTheme.primary,
-                                    AppTheme.primary.withValues(alpha: 0.4),
-                                    Colors.transparent,
-                                  ],
-                                  stops: const [0.0, 0.6, 1.0],
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Remove gradient overlay (was shadowing prayer panel)
                         ],
                       );
                     }
@@ -1109,28 +1234,17 @@ class _HomePageState extends State<HomePage> {
         child: const MinyanPage(),
       );
     } else if (_selectedIndex == 2) {
-      // Notifications view
-      return Center(
-        child: Text(
-          'Notifications',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
+      // Prayers view - dedicated prayer times tab
+      return PrayersPage(
+        prayerTimes: _prayerTimes,
+        cityCountry: _cityCountry,
+        isLoading: _prayerTimesLoading,
       );
     } else if (_selectedIndex == 3) {
-      // Profile view
-      return Center(
-        child: Text(
-          'Profile',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
+      // Notifications view
+      return BlocProvider<NotificationBloc>(
+        create: (context) => NotificationBloc(),
+        child: const NotificationsHomePage(),
       );
     }
 

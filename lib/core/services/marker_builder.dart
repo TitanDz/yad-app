@@ -80,14 +80,60 @@ class MarkerBuilder {
     );
   }
 
-  /// Create synagogue location marker using pinMap.svg (original colors)
-  static Future<BitmapDescriptor> createSynagogueMarker({
-    double size = 48.0,
+  /// Create active user marker (blue circle with user icon)
+  static Future<BitmapDescriptor> createActiveUserMarker({
+    double size = 40.0,
   }) async {
-    return await _loadSvgMarkerNoTint(
-      svgPath: 'assets/images/Icons/pinMap.svg',
-      size: size,
-    );
+    try {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      // Draw blue circle
+      final paint = Paint()
+        ..color = Colors.blue
+        ..style = PaintingStyle.fill;
+      
+      final radius = size / 2;
+      canvas.drawCircle(Offset(radius, radius), radius, paint);
+
+      // Draw white border
+      final borderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      
+      canvas.drawCircle(Offset(radius, radius), radius, borderPaint);
+
+      // Draw user icon in center
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: '👤',
+          style: TextStyle(
+            fontSize: size * 0.6,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(
+          (size - textPainter.width) / 2,
+          (size - textPainter.height) / 2,
+        ),
+      );
+
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(size.toInt(), size.toInt());
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+    } catch (e) {
+      debugPrint('Error creating active user marker: $e');
+      // Fallback to blue marker
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+    }
   }
 
   /// Load SVG marker without color tinting (use original SVG colors)

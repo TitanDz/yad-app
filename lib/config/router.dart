@@ -20,7 +20,8 @@ import 'package:yad_app/features/settings/data/datasources/settings_datasource.d
 import 'package:yad_app/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:yad_app/features/settings/presentation/pages/settings_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/profile_page.dart';
-import 'package:yad_app/features/settings/presentation/pages/notifications_page.dart';
+import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
+import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
 import 'package:yad_app/features/settings/presentation/pages/prayer_preferences_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/visibility_page.dart';
 import 'package:yad_app/features/settings/presentation/pages/travel_mode_page.dart';
@@ -93,7 +94,10 @@ class AppRouter {
           ),
           GoRoute(
             path: 'notifications',
-            builder: (context, state) => const NotificationsPage(),
+            builder: (context, state) => BlocProvider<NotificationBloc>(
+              create: (context) => NotificationBloc(),
+              child: const NotificationsHomePage(),
+            ),
           ),
           GoRoute(
             path: 'prayer-preferences',

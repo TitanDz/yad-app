@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yad_app/config/theme.dart';
 import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
+import 'package:yad_app/features/home/presentation/widgets/enhanced_notification_card.dart';
 
 class NotificationsHomePage extends StatefulWidget {
   const NotificationsHomePage({super.key});
@@ -64,12 +65,20 @@ class _NotificationsHomePageState extends State<NotificationsHomePage> {
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
                       itemCount: state.notifications.length,
                       itemBuilder: (context, index) {
-                        return _buildNotificationCard(
-                          context,
-                          state.notifications[index],
+                        final notification = state.notifications[index];
+                        return EnhancedNotificationCard(
+                          notification: notification,
+                          onTap: () {
+                            if (!notification.isRead) {
+                              context.read<NotificationBloc>().add(MarkAsReadEvent(notification.id));
+                            }
+                          },
+                          onDelete: () {
+                            context.read<NotificationBloc>().add(DeleteNotificationEvent(notification.id));
+                          },
                         );
                       },
                     );
@@ -210,8 +219,14 @@ class _NotificationsHomePageState extends State<NotificationsHomePage> {
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.1),
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
+          border: isSelected
+              ? null
+              : Border.all(
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                  width: 1,
+                ),
         ),
         child: Row(
           children: [
@@ -230,7 +245,7 @@ class _NotificationsHomePageState extends State<NotificationsHomePage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.3),
+                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -249,133 +264,6 @@ class _NotificationsHomePageState extends State<NotificationsHomePage> {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, var notification) {
-    final iconMap = {
-      'alert': Icons.notifications_active,
-      'update': Icons.update,
-      'announcement': Icons.info,
-      'cancelled': Icons.cancel,
-    };
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: notification.isRead
-          ? Theme.of(context).colorScheme.surface
-          : Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-      child: InkWell(
-        onTap: () {
-          if (!notification.isRead) {
-            context.read<NotificationBloc>().add(MarkAsReadEvent(notification.id));
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: notification.isRead
-                      ? Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.2)
-                      : Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  iconMap[notification.icon] ?? Icons.notifications,
-                  color: notification.isRead
-                      ? Theme.of(context).colorScheme.onSurfaceVariant
-                      : Theme.of(context).colorScheme.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            notification.title,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        if (!notification.isRead)
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.message,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _formatTime(notification.timestamp),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              
-              // Delete button
-              PopupMenuButton(
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: const [
-                        Icon(Icons.delete_outline, size: 18),
-                        SizedBox(width: 8),
-                        Text('Delete'),
-                      ],
-                    ),
-                  ),
-                ],
-                onSelected: (value) {
-                  if (value == 'delete') {
-                    context.read<NotificationBloc>().add(DeleteNotificationEvent(notification.id));
-                  }
-                },
-                child: Icon(
-                  Icons.more_vert,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  size: 18,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildEmptyState(BuildContext context) {
     return Center(
@@ -449,20 +337,4 @@ class _NotificationsHomePageState extends State<NotificationsHomePage> {
     );
   }
 
-  String _formatTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else {
-      return '${timestamp.month}/${timestamp.day}/${timestamp.year}';
-    }
-  }
 }

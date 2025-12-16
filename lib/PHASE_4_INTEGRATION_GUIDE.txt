@@ -1,0 +1,398 @@
+===================================================================================
+PHASE 4: LOCATION VOTING SYSTEM - INTEGRATION GUIDE
+===================================================================================
+
+OVERVIEW:
+Phase 4 implements a consensus-based location voting system that runs after a minyan 
+is automatically formed (from Phase 3). Users can suggest locations and vote on them,
+with automatic consensus detection when majority is reached.
+
+===================================================================================
+ARCHITECTURE FLOW (All Phases)
+===================================================================================
+
+1. PRAYER TIMER DETECTION (Phase 1 + Phase 3)
+   ├─ User sees prayer times with live countdown (PrayerCountdownService)
+   └─ 30 minutes before prayer: PrayerTimerBloc triggers
+
+2. NEARBY USER DETECTION (Phase 2)
+   ├─ ActiveUsersBloc detects users within search radius
+   ├─ Shows user markers on map (blue circles with user icon)
+   └─ Displays available users with "Join minyan?" notification
+
+3. AUTO-MINYAN FORMATION (Phase 3)
+   ├─ PrayerTimerBloc triggers 30-min pre-prayer check
+   ├─ MinyanFormationBloc checks: Are 10+ users available?
+   ├─ YES → Show "Join this prayer group?" notification to users
+   ├─ Users confirm availability (or "unavailable for 5/7/10/15 mins")
+   └─ When 10 users confirm → Minyan FORMED with status='confirmed'
+       └─ Minyan entity created with confirmed participant IDs
+
+4. LOCATION VOTING (Phase 4) ← NEW
+   ├─ LocationVotingBloc initializes voting session
+   ├─ System adds initial suggestion: "Central Location" (centroid)
+   ├─ Users see voting UI with all location suggestions
+   ├─ Users can:
+   │  ├─ Vote for a location
+   │  ├─ Suggest new location with name/address
+   │  └─ View vote progress (X of Y votes for consensus)
+   ├─ Automatic consensus detection:
+   │  ├─ When majority reached (ceil(participants/2) votes)
+   │  └─ LocationVotingBloc emits ConsensusReached state
+   ├─ Voting expires 20 mins before prayer
+   │  └─ System auto-finalizes with highest-voted location
+   └─ Location finalized → Ready for directions sharing
+
+===================================================================================
+KEY COMPONENTS CREATED IN PHASE 4
+===================================================================================
+
+1. ENTITIES (Domain Models)
+   
+   LocationSuggestion
+   ├─ id: String - Unique suggestion ID
+   ├─ name: String - Location name
+   ├─ address: String? - Optional address
+   ├─ latitude/longitude: Double - Coordinates
+   ├─ voteCount: Int - Current vote count
+   ├─ voterIds: List<String> - Users who voted for this
+   ├─ suggestedByUserId: String - Who suggested it
+   ├─ type: String - 'centroid', 'synagogue', 'user_suggested'
+   ├─ averageDistance: Double? - Avg distance from all participants
+   └─ copyWith(): LocationSuggestion - Immutable updates
+
+   VotingSession
+   ├─ id: String - Session ID
+   ├─ minyanId: String - Associated minyan
+   ├─ participantIds: List<String> - All confirmed users
+   ├─ suggestions: List<LocationSuggestion> - All suggestions
+   ├─ status: String - 'active', 'consensus_reached', 'expired'
+   ├─ consensusLocation: LocationSuggestion? - Winner
+   ├─ votesNeeded: Int - ceil(participantIds.length * 0.5)
+   ├─ expiresAt: DateTime? - 20 mins before prayer
+   ├─ getLeadingSuggestion(): LocationSuggestion? - Highest voted
+   ├─ hasConsensus(): Bool - votesNeeded threshold reached?
+   ├─ isExpired(): Bool - Check if voting time ended
+   ├─ getMinutesUntilExpiry(): Int - Time remaining
+   └─ copyWith(): VotingSession - Immutable updates
+
+2. BLOC (State Management)
+
+   LocationVotingBloc (Singleton)
+   
+   Events:
+   ├─ InitializeVotingSessionEvent
+   │  └─ Initialize voting for a minyan with confirmed users
+   ├─ AddLocationSuggestionEvent
+   │  └─ User suggests a new location
+   ├─ VoteForLocationEvent
+   │  └─ User votes for a location (changes their vote)
+   ├─ CheckConsensusEvent
+   │  └─ Check if majority reached (called automatically every 10s)
+   ├─ FinalizeVotingEvent
+   │  └─ Manually finalize voting
+   └─ CancelVotingEvent
+      └─ Cancel voting session
+
+   States:
+   ├─ LocationVotingInitial - No session
+   ├─ VotingSessionActive - Voting in progress
+   │  ├─ session: VotingSession
+   │  └─ minutesRemaining: Int
+   ├─ SuggestionAdded - New suggestion added
+   ├─ VoteCasted - Vote recorded
+   ├─ ConsensusReached - Majority votes reached
+   │  ├─ winningLocation: LocationSuggestion
+   │  └─ reason: String
+   ├─ VotingExpired - Time limit exceeded
+   │  └─ defaultLocation: LocationSuggestion?
+   └─ LocationVotingError - Error occurred
+
+   Key Features:
+   ├─ Automatic 30-second expiry timer
+   ├─ Automatic 10-second consensus check
+   ├─ Single-vote-per-user enforcement (vote changes override)
+   ├─ Proper cleanup of timers in close()
+
+3. SERVICES
+
+   CentroidCalculationService (Static Methods)
+   ├─ calculateCentroid(List<GeoPoint>): GeoPoint
+   │  └─ Spherical average of multiple locations
+   ├─ calculateDistance(GeoPoint, GeoPoint): Double
+   │  └─ Haversine formula (km)
+   ├─ calculateAverageDistance(GeoPoint, List<GeoPoint>): Double
+   │  └─ Mean distance to all points
+   ├─ calculateBoundingBox(List<GeoPoint>): Map
+   │  └─ Get map bounds for all locations
+   ├─ formatDistance(Double): String
+   │  └─ Human-readable distance format
+   └─ isValidCoordinate(Double, Double): Bool
+      └─ Validate lat/lon ranges
+
+4. UI WIDGETS
+
+   LocationSuggestionCard
+   ├─ Displays single location suggestion
+   ├─ Shows:
+   │  ├─ Location name & type icon
+   │  ├─ Address & average distance
+   │  ├─ Vote progress bar (visual + percentage)
+   │  ├─ "Consensus reached!" badge when majority
+   │  └─ Vote button (filled if user voted, outline otherwise)
+   ├─ Props:
+   │  ├─ suggestion: LocationSuggestion
+   │  ├─ hasVoted: Bool
+   │  ├─ onVote: VoidCallback
+   │  ├─ totalParticipants: Int
+   │  └─ votesNeeded: Int
+   └─ Uses AppTheme colors for consistency
+
+   LocationVotingSheet (Bottom Sheet Modal)
+   ├─ Full voting interface shown as draggable bottom sheet
+   ├─ Sections:
+   │  ├─ Header: Title, participant count, time remaining
+   │  ├─ Info bar: "Need X votes for consensus"
+   │  ├─ Suggestions list: All locations sorted by votes
+   │  ├─ Add location button: Opens inline form
+   │  ├─ Add location form (inline):
+   │  │  ├─ Name input (required)
+   │  │  ├─ Address input (optional)
+   │  │  └─ Cancel/Suggest buttons
+   │  └─ Finalize button: When consensus or time runs out
+   ├─ States handled:
+   │  ├─ VotingSessionActive - Show suggestions & vote
+   │  ├─ ConsensusReached - Show success screen
+   │  └─ VotingExpired - Show default location
+   ├─ Props:
+   │  ├─ onLocationFinalized: VoidCallback?
+   │  └─ currentUserId: String
+   └─ Auto-closes when consensus reached
+
+===================================================================================
+HOW TO INTEGRATE INTO YOUR APP
+===================================================================================
+
+STEP 1: TRIGGER VOTING FROM MINYAN FORMATION
+-------------------------------------------
+
+In your HomeBloc or wherever you handle MinyanFormed state:
+
+```dart
+if (state is MinyanFormed) {
+  // Get the LocationVotingBloc from service locator
+  final votingBloc = getIt<LocationVotingBloc>();
+  
+  // Initialize voting for this minyan
+  votingBloc.add(
+    InitializeVotingSessionEvent(
+      minyan: state.minyan,
+      participantIds: state.confirmedUserIds,
+    ),
+  );
+  
+  // Show voting UI
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => BlocProvider.value(
+      value: votingBloc,
+      child: LocationVotingSheet(
+        currentUserId: currentUserId,
+        onLocationFinalized: () {
+          // Handle finalized location
+          // Update minyan location field
+          // Show "Share location with group" notification
+        },
+      ),
+    ),
+  );
+}
+```
+
+STEP 2: DISPLAY VOTING UI IN HOME PAGE
+--------------------------------------
+
+Add to home_page.dart build():
+
+```dart
+BlocListener<LocationVotingBloc, LocationVotingState>(
+  listener: (context, state) {
+    if (state is ConsensusReached) {
+      // Optionally show confirmation snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✓ Location: ${state.winningLocation.name}')),
+      );
+    }
+  },
+  child: BlocBuilder<LocationVotingBloc, LocationVotingState>(
+    builder: (context, state) {
+      if (state is VotingSessionActive) {
+        // Voting in progress - show indicator on FAB or header
+        return FloatingActionButton(
+          label: Text('${state.session.suggestions.length} locations'),
+        );
+      }
+      return SizedBox.shrink();
+    },
+  ),
+)
+```
+
+STEP 3: HANDLE LOCATION FINALIZATION
+-------------------------------------
+
+When voting completes, update the minyan with selected location:
+
+```dart
+void _finalizeMinyanLocation(LocationSuggestion location, Minyan minyan) {
+  // Update minyan with finalized location
+  final updatedMinyan = minyan.copyWith(
+    locationName: location.name,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    notes: '${minyan.notes}\nLocation: ${location.name}',
+  );
+  
+  // Save to database/backend
+  _minyansRepository.updateMinyan(updatedMinyan);
+  
+  // Show share directions option
+  _showShareDirectionsDialog(location);
+}
+```
+
+===================================================================================
+DATA FLOW EXAMPLE: REAL SCENARIO
+===================================================================================
+
+TIME: 14:30 (30 mins before Mincha at 15:00)
+
+Event Timeline:
+───────────────
+
+14:30 - PrayerTimerBloc detects 30-minute threshold
+        └─ Checks nearby users: 12 available in 10km radius
+
+14:31 - MinyanFormationBloc triggers "Join prayer group?" notifications
+        └─ Sent to all 12 available users in area
+
+14:32-14:33 - Users respond:
+        ├─ User1: ✓ Yes
+        ├─ User2: ✓ Yes
+        ├─ User3: ✓ Yes
+        ├─ User4: ✓ Yes
+        ├─ User5: ✓ Yes (in 5 mins)
+        ├─ User6: ✓ Yes
+        ├─ User7: ✓ Yes
+        ├─ User8: ✓ Yes
+        ├─ User9: ✓ Yes
+        ├─ User10: ✓ Yes
+        └─ Confirmation count reaches 10 ✓
+
+14:33 - MinyanFormationBloc emits MinyanFormed state
+        └─ Minyan created with ID "m123", status='confirmed'
+
+14:33:30 - LocationVotingBloc initializes voting session
+        ├─ Creates "Central Location" (centroid of all users)
+        └─ Shows LocationVotingSheet modal
+
+14:34 - Users see voting UI:
+        Location Option 1: Central Location (centroid)
+        Location Option 2: [User suggested] "Beth Jacob Shul" (2 votes)
+        Location Option 3: [User suggested] "Coffee shop near subway" (0 votes)
+
+14:35-14:38 - Users vote:
+        ├─ Central Location: 0 → 1 → 3 → 5 → 6 votes
+        ├─ Beth Jacob: 2 → 4 → 5 votes
+        └─ Coffee shop: 0 → 1 → 1 votes
+
+14:38:30 - "Central Location" reaches 6 votes
+        ├─ Majority threshold: ceil(10/2) = 5 votes ✓
+        └─ ConsensusReached state emitted
+        └─ "Consensus reached!" badge shows on Central Location card
+        └─ Voting sheet shows success screen
+
+14:39 - Voting finalizes, sheet closes with location data
+        ├─ Minyan updated with location coordinates
+        └─ Users see notification: "✓ Meeting at Central Location"
+        └─ Share directions option appears
+
+14:45 - Users arrive, check-in at minyan location
+
+15:00 - Prayer starts with full minyan!
+
+===================================================================================
+TECHNICAL NOTES
+===================================================================================
+
+1. VOTE HANDLING
+   ├─ Users can only vote once per location
+   ├─ Changing vote automatically unvotes previous selection
+   ├─ Suggestion: Sort by voteCount descending for UI display
+   └─ Track voterIds to enforce single-vote-per-user
+
+2. CONSENSUS DETECTION
+   ├─ votesNeeded = ceil(participantIds.length / 2)
+   ├─ hasConsensus() = getLeadingSuggestion().voteCount >= votesNeeded
+   ├─ Check runs automatically every 10 seconds
+   └─ Prevents race conditions with explicit state emissions
+
+3. EXPIRY HANDLING
+   ├─ Voting expires 20 mins before prayer time
+   ├─ Expiry timer checks every 30 seconds
+   ├─ On expiry: LocationVotingBloc uses highest-voted suggestion
+   └─ If tied: Use first suggestion (or implement tiebreaker)
+
+4. CENTROID CALCULATION
+   ├─ Uses spherical average (proper for Earth's surface)
+   ├─ NOT simple arithmetic average of lat/lon
+   ├─ Handles antipodal points correctly
+   └─ Production: Would use actual participant coordinates
+
+5. PRODUCTION INTEGRATION
+   To connect to real data, replace mock implementations:
+   
+   ├─ Add actual participant coordinates to VotingSession
+   ├─ Calculate real centroid from participant locations
+   ├─ Fetch synagogue locations from backend
+   ├─ Reverse-geocode user suggestions to get coordinates
+   ├─ Add distance calculation to LocationSuggestion display
+   └─ Persist voting sessions & results to Firestore
+
+===================================================================================
+STATE MANAGEMENT BEST PRACTICES
+===================================================================================
+
+1. BLoC Registration (already done in service_locator.dart):
+   └─ LocationVotingBloc registered as singleton
+
+2. Provider Scope:
+   └─ Use BlocProvider.value in route builder (not BlocProvider(create:))
+   └─ Prevents 'Cannot add new events after calling close' errors
+
+3. Lifecycle:
+   ├─ BLoCs initialized when app starts (service locator)
+   └─ Proper cleanup in close() method (timers cancellation)
+
+4. State Listening:
+   ├─ Use BlocListener for side effects (snackbars, navigation)
+   ├─ Use BlocBuilder for UI rebuilds
+   ├─ Combine both for complete reactive pattern
+
+===================================================================================
+NEXT STEPS AFTER PHASE 4
+===================================================================================
+
+1. Implement minyan finalization & persistence
+2. Add directions sharing to Google Maps / Waze
+3. Add check-in system at finalized location
+4. Add minyan review/rating after completion
+5. Implement tiebreaker logic for voting (highest average distance)
+6. Add real-time WebSocket updates for voting progress
+7. Implement voting revocation (user can change vote until consensus)
+8. Add optional ranked-choice voting (1st/2nd/3rd preferences)
+
+===================================================================================
+END OF PHASE 4 INTEGRATION GUIDE
+===================================================================================

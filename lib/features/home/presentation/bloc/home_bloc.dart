@@ -579,8 +579,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   Future<BitmapDescriptor> _createSynagogueMarker() async {
-    // Use the custom pinMap.svg marker for synagogue locations (violet variant)
-    return await MarkerBuilder.createSynagogueMarker();
+    // Use the custom pinMap.svg marker for synagogue locations (same as minyan marker)
+    return await MarkerBuilder.createMinyanMarker();
   }
 
   Future<Set<Marker>> _addCurrentLocationMarker(

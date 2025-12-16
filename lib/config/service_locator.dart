@@ -11,13 +11,20 @@ import 'package:yad_app/features/home/data/datasources/minyan_remote_datasource.
 import 'package:yad_app/features/home/data/datasources/minyan_unified_datasource.dart';
 import 'package:yad_app/features/home/data/datasources/place_remote_datasource.dart';
 import 'package:yad_app/features/home/data/datasources/place_unified_datasource.dart';
+import 'package:yad_app/features/home/data/datasources/active_users_datasource.dart';
 import 'package:yad_app/features/home/data/repositories/minyan_repository.dart';
 import 'package:yad_app/features/home/data/repositories/place_repository.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/availability_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/user_status_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/active_users_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/prayer_timer_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/minyan_formation_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/location_voting_bloc.dart';
 import 'package:yad_app/features/settings/presentation/bloc/theme_bloc.dart';
 import 'package:yad_app/shared/constants/app_constants.dart';
+import 'package:yad_app/core/services/prayer_countdown_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -71,6 +78,7 @@ Future<void> setupServiceLocator() async {
 
   // Home services
   getIt.registerSingleton<LocationService>(LocationService());
+  getIt.registerSingleton<PrayerCountdownService>(PrayerCountdownService());
 
   // Home blocs
   getIt.registerSingleton<HomeBloc>(
@@ -88,5 +96,30 @@ Future<void> setupServiceLocator() async {
   // Availability bloc for 30-minute unavailable feature
   getIt.registerSingleton<AvailabilityBloc>(
     AvailabilityBloc(),
+  );
+
+  // User status bloc for tracking user online/offline/searching status
+  getIt.registerSingleton<UserStatusBloc>(
+    UserStatusBloc(),
+  );
+
+  // Active users bloc for detecting nearby users
+  getIt.registerSingleton<ActiveUsersBloc>(
+    ActiveUsersBloc(dataSource: MockActiveUsersDataSource()),
+  );
+
+  // Prayer timer bloc for 30-minute pre-prayer detection
+  getIt.registerSingleton<PrayerTimerBloc>(
+    PrayerTimerBloc(prayerCountdownService: getIt<PrayerCountdownService>()),
+  );
+
+  // Minyan formation bloc for automatic minyan creation
+  getIt.registerSingleton<MinyanFormationBloc>(
+    MinyanFormationBloc(),
+  );
+
+  // Location voting bloc for consensus-based location selection
+  getIt.registerSingleton<LocationVotingBloc>(
+    LocationVotingBloc(),
   );
 }
