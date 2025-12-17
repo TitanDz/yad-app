@@ -8,14 +8,15 @@ import 'package:yad_app/config/theme.dart';
 import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/availability_bloc.dart';
-import 'package:yad_app/features/home/presentation/widgets/index.dart';
+import 'package:yad_app/features/home/presentation/bloc/active_users_bloc.dart';
 import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
-import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
+import 'package:yad_app/features/home/presentation/widgets/index.dart';
 import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
 import 'package:yad_app/core/services/prayer_countdown_service.dart';
 import 'package:yad_app/core/services/user_preferences_manager.dart';
 import 'package:yad_app/features/home/presentation/pages/prayers_page.dart';
+import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -45,10 +46,13 @@ class _HomePageState extends State<HomePage> {
   List<PrayerTimeInfo> _prayerTimes = [];
   String _cityCountry = '';
   bool _prayerTimesLoading = true;
+  late ActiveUsersBloc _activeUsersBloc;
+  bool _activeUsersLoaded = false;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('✅ [HomePage initState] Starting initialization...');
     _searchController.addListener(_onSearchChanged);
     // Initialize MinyanBloc once and reuse it
     _minyanBloc = getIt<MinyanBloc>();
@@ -56,6 +60,9 @@ class _HomePageState extends State<HomePage> {
     _homeBloc = getIt<HomeBloc>();
     // Initialize AvailabilityBloc
     _availabilityBloc = getIt<AvailabilityBloc>();
+    // Initialize ActiveUsersBloc for nearby user markers
+    _activeUsersBloc = getIt<ActiveUsersBloc>();
+    debugPrint('✅ [HomePage initState] ActiveUsersBloc initialized: ${_activeUsersBloc.hashCode}');
     // Initialize PrayerCountdownService
     _prayerCountdownService = getIt<PrayerCountdownService>();
     
@@ -63,6 +70,8 @@ class _HomePageState extends State<HomePage> {
     _homeBloc.add(const InitializeMapEvent());
     // Initialize availability tracking
     _availabilityBloc.add(InitializeAvailabilityEvent(userId: _userId));
+    // Load nearby active users (will trigger after map initializes)
+    _loadNearbyActiveUsers();
     
     // Reset refresh flag when the page comes back into focus
     _refreshTriggered = false;
@@ -72,6 +81,7 @@ class _HomePageState extends State<HomePage> {
     
     // Get user location and city/country
     _getUserLocationAndCity();
+    debugPrint('✅ [HomePage initState] Initialization complete');
   }
 
   @override
@@ -130,6 +140,46 @@ class _HomePageState extends State<HomePage> {
       setState(() => _prayerTimesLoading = false);
     }
   }
+
+  /// Load nearby active users on the map
+  void _loadNearbyActiveUsers() {
+    debugPrint('🔵 [_loadNearbyActiveUsers] Called, checking HomeBloc state...');
+    debugPrint('   Current state type: ${_homeBloc.state.runtimeType}');
+    debugPrint('   _activeUsersLoaded flag: $_activeUsersLoaded');
+    
+    // Check if map is ready right away
+    final homeState = _homeBloc.state;
+    if (homeState is HomeMapReady) {
+      if (_activeUsersLoaded) {
+        debugPrint('🔵 [_loadNearbyActiveUsers] Users already loaded, skipping...');
+        return;
+      }
+      
+      // Use user location or fallback to NYC
+      final latitude = homeState.userLocation?.latitude ?? 40.7128;
+      final longitude = homeState.userLocation?.longitude ?? -74.0060;
+      
+      debugPrint('🔵 [_loadNearbyActiveUsers] Map is ready! Loading nearby active users from ($latitude, $longitude)...');
+      _activeUsersBloc.add(
+        LoadNearbyUsersEvent(
+          latitude: latitude,
+          longitude: longitude,
+          radiusKm: 10.0, // 10 km search radius
+        ),
+      );
+      _activeUsersLoaded = true;
+    } else {
+      // If not ready yet, schedule a retry
+      debugPrint('⏳ [_loadNearbyActiveUsers] Map not ready yet (state: ${homeState.runtimeType})');
+      debugPrint('   Will retry in 500ms...');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        debugPrint('🔵 [_loadNearbyActiveUsers] Retrying after delay...');
+        _loadNearbyActiveUsers();
+      });
+    }
+  }
+
+
 
   /// Get user location and reverse geocode to city/country
   Future<void> _getUserLocationAndCity() async {
@@ -583,7 +633,9 @@ class _HomePageState extends State<HomePage> {
   Widget _buildPageContent(BuildContext context) {
     if (_selectedIndex == 0) {
       // Map view - optimized for maximum map visibility
-      return Column(
+      return BlocProvider<ActiveUsersBloc>.value(
+        value: _activeUsersBloc,
+        child: Column(
         children: [
           // Enhanced app header bar (Avatar, Title, Settings) - improved for visibility and safe area
           Container(
@@ -775,12 +827,31 @@ class _HomePageState extends State<HomePage> {
                       debugPrint('\n🎯 [BlocListener] Map became ready! Triggering auto-refresh to load nearby minyans...');
                       _refreshTriggered = true;
                       _homeBloc.add(const RefreshNearbyMiniyansEvent());
+                      // Load active users after map is ready (with a small delay to ensure state is updated)
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _loadNearbyActiveUsers();
+                      });
                     }
                   },
                   child: const SizedBox.shrink(),
                 ),
                 
-                // BlocListener to show minyan details sheet when marker is tapped
+                // BlocListener for active user markers - dispatch only once when users load
+                BlocListener<ActiveUsersBloc, ActiveUsersState>(
+                  listenWhen: (previous, current) {
+                    // Only dispatch when we transition TO ActiveUsersLoaded state
+                    final wasLoaded = previous is ActiveUsersLoaded;
+                    final isLoaded = current is ActiveUsersLoaded && current.users.isNotEmpty;
+                    return !wasLoaded && isLoaded; // Only trigger on state change, not every rebuild
+                  },
+                  listener: (context, activeUsersState) {
+                    if (activeUsersState is ActiveUsersLoaded) {
+                      debugPrint('🔵 [ActiveUsersBloc] Loaded ${activeUsersState.users.length} active users - dispatching to HomeBloc...');
+                      _homeBloc.add(LoadActiveUserMarkersEvent(activeUsersState.users));
+                    }
+                  },
+                  child: const SizedBox.shrink(),
+                ),
                 BlocListener<HomeBloc, HomeState>(
                   listenWhen: (previous, current) {
                     // Listen when selectedMinyan changes (and is not null)
@@ -1226,6 +1297,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ],
+      ),
       );
     } else if (_selectedIndex == 1) {
       // Minyans view
@@ -1244,7 +1316,7 @@ class _HomePageState extends State<HomePage> {
       // Notifications view
       return BlocProvider<NotificationBloc>(
         create: (context) => NotificationBloc(),
-        child: const NotificationsHomePage(),
+        child: NotificationsHomePage(),
       );
     }
 

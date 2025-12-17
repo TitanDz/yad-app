@@ -9,7 +9,9 @@ class MockAuthRemoteDataSource {
   static const int apiDelayMs = 1500;
 
   /// List of mock users for testing
+  /// Each user simulates a different real-world scenario
   static final List<Map<String, String>> _mockUsers = [
+    // Primary test user
     {
       'id': '1',
       'email': 'test@example.com',
@@ -17,12 +19,106 @@ class MockAuthRemoteDataSource {
       'lastName': 'User',
       'password': 'Password123',
     },
+    // Secondary demo account
     {
       'id': '2',
       'email': 'demo@example.com',
       'firstName': 'Demo',
       'lastName': 'Account',
       'password': 'Demo12345',
+    },
+    // Additional test users for minyan formation testing
+    // These accounts correspond to the mock active users
+    {
+      'id': '3',
+      'email': 'david@example.com',
+      'firstName': 'David',
+      'lastName': 'Cohen',
+      'password': 'David123!',
+    },
+    {
+      'id': '4',
+      'email': 'rachel@example.com',
+      'firstName': 'Rachel',
+      'lastName': 'Silverstein',
+      'password': 'Rachel123!',
+    },
+    {
+      'id': '5',
+      'email': 'michael@example.com',
+      'firstName': 'Michael',
+      'lastName': 'Rothstein',
+      'password': 'Michael123!',
+    },
+    {
+      'id': '6',
+      'email': 'sarah@example.com',
+      'firstName': 'Sarah',
+      'lastName': 'Goldstein',
+      'password': 'Sarah123!',
+    },
+    {
+      'id': '7',
+      'email': 'aaron@example.com',
+      'firstName': 'Aaron',
+      'lastName': 'Blum',
+      'password': 'Aaron123!',
+    },
+    {
+      'id': '8',
+      'email': 'miriam@example.com',
+      'firstName': 'Miriam',
+      'lastName': 'Levy',
+      'password': 'Miriam123!',
+    },
+    {
+      'id': '9',
+      'email': 'eli@example.com',
+      'firstName': 'Eli',
+      'lastName': 'Kellerman',
+      'password': 'Eli123!',
+    },
+    {
+      'id': '10',
+      'email': 'hannah@example.com',
+      'firstName': 'Hannah',
+      'lastName': 'Steinberg',
+      'password': 'Hannah123!',
+    },
+    {
+      'id': '11',
+      'email': 'jacob@example.com',
+      'firstName': 'Jacob',
+      'lastName': 'Mendelson',
+      'password': 'Jacob123!',
+    },
+    {
+      'id': '12',
+      'email': 'leah@example.com',
+      'firstName': 'Leah',
+      'lastName': 'Feldman',
+      'password': 'Leah123!',
+    },
+    {
+      'id': '13',
+      'email': 'joseph@example.com',
+      'firstName': 'Joseph',
+      'lastName': 'Lowenthal',
+      'password': 'Joseph123!',
+    },
+    {
+      'id': '14',
+      'email': 'ruth@example.com',
+      'firstName': 'Ruth',
+      'lastName': 'Goldman',
+      'password': 'Ruth123!',
+    },
+    {
+      'id': '15',
+      'email': 'samuel@example.com',
+      'firstName': 'Samuel',
+      'lastName': 'Friedman',
+      'password': 'Samuel123!',
     },
   ];
 
@@ -95,5 +191,26 @@ class MockAuthRemoteDataSource {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
     // In a real app, would invalidate token on server
+  }
+
+  /// Get all available test users (for debugging/testing)
+  static List<Map<String, String>> getAllTestUsers() => _mockUsers;
+
+  /// Get a test user by email
+  static Map<String, String>? getTestUserByEmail(String email) {
+    try {
+      return _mockUsers.firstWhere((u) => u['email'] == email);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get a test user by ID
+  static Map<String, String>? getTestUserById(String id) {
+    try {
+      return _mockUsers.firstWhere((u) => u['id'] == id);
+    } catch (e) {
+      return null;
+    }
   }
 }

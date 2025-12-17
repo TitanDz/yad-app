@@ -11,6 +11,7 @@ import 'package:yad_app/features/home/domain/entities/user_location.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
 import 'package:yad_app/core/services/marker_builder.dart';
 import 'package:yad_app/core/services/routing_service.dart';
+import 'package:yad_app/features/home/domain/entities/active_user_marker.dart';
 
 // Events
 abstract class HomeEvent extends Equatable {
@@ -126,6 +127,16 @@ class ShowMinyanDetailsEvent extends HomeEvent {
 class ClearSelectedMinyanEvent extends HomeEvent {
   /// Clear the selected minyan to allow re-selection of the same marker
   const ClearSelectedMinyanEvent();
+}
+
+class LoadActiveUserMarkersEvent extends HomeEvent {
+  /// Load and display active user markers on the map
+  final List<ActiveUserMarker> activeUsers;
+
+  const LoadActiveUserMarkersEvent(this.activeUsers);
+
+  @override
+  List<Object?> get props => [activeUsers];
 }
 
 // States
@@ -247,6 +258,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<ClearRouteEvent>(_onClearRoute);
     on<ShowMinyanDetailsEvent>(_onShowMinyanDetails);
     on<ClearSelectedMinyanEvent>(_onClearSelectedMinyan);
+    on<LoadActiveUserMarkersEvent>(_onLoadActiveUserMarkers);
+
   }
 
   Future<void> _onInitializeMap(
@@ -970,5 +983,70 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     
     // Clear the selected minyan so tapping the same marker again will trigger selection
     emit(currentState.copyWith(selectedMinyan: null as Minyan?));
+  }
+
+  /// Handle loading active user markers on the map
+  Future<void> _onLoadActiveUserMarkers(
+    LoadActiveUserMarkersEvent event,
+    Emitter<HomeState> emit,
+  ) async {
+    if (state is! HomeMapReady) {
+      debugPrint('❌ LoadActiveUserMarkersEvent received but state is not HomeMapReady');
+      return;
+    }
+
+    final currentState = state as HomeMapReady;
+
+    try {
+      if (event.activeUsers.isEmpty) {
+        debugPrint('ℹ️ No active users to display');
+        return;
+      }
+
+      debugPrint('🔵 [HomeBloc] Creating markers for ${event.activeUsers.length} active users');
+
+      // Create user marker icon
+      final userMarkerIcon = await MarkerBuilder.createActiveUserMarker();
+
+      // Create markers for each active user
+      final userMarkers = event.activeUsers.map((user) {
+        debugPrint('   🔵 Creating marker for user: ${user.name} at (${user.latitude}, ${user.longitude})');
+        return Marker(
+          markerId: MarkerId('user_${user.userId}'),
+          position: LatLng(user.latitude, user.longitude),
+          infoWindow: InfoWindow(
+            title: user.name,
+            snippet: '${user.distance?.toStringAsFixed(1) ?? "N/A"} km away - ${user.isAvailable ? "Available" : "Unavailable in ${user.minutesUnavailable}min"}',
+          ),
+          icon: userMarkerIcon,
+          onTap: () {
+            debugPrint('🔵 User marker tapped: ${user.name}');
+          },
+        );
+      }).toSet();
+
+      debugPrint('   📊 Total user markers created: ${userMarkers.length}');
+
+      // Remove old user markers (any marker with markerId starting with 'user_')
+      final existingNonUserMarkers = currentState.markers
+          .where((marker) => !marker.markerId.value.startsWith('user_'))
+          .toSet();
+      debugPrint('   🧹 Removed old user markers. Remaining non-user markers: ${existingNonUserMarkers.length}');
+
+      // Combine non-user markers with new user markers
+      final combinedMarkers = {...existingNonUserMarkers, ...userMarkers};
+      debugPrint('   🗺️ Total markers after adding users: ${combinedMarkers.length}');
+
+      // Emit updated state with user markers added
+      emit(currentState.copyWith(
+        markers: combinedMarkers,
+      ));
+
+      debugPrint('✅ User markers loaded and map state updated with ${userMarkers.length} user markers');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error loading active user markers: $e');
+      debugPrint('Stack trace: $stackTrace');
+      emit(HomeError('Failed to load user markers: ${e.toString()}'));
+    }
   }
 }
