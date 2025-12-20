@@ -30,6 +30,8 @@ import 'package:yad_app/features/settings/presentation/pages/help_center_page.da
 import 'package:yad_app/features/settings/presentation/pages/about_page.dart';
 import 'package:yad_app/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/welcome_page.dart';
+import 'package:yad_app/features/invitation/presentation/bloc/invitation_bloc.dart';
+import 'package:yad_app/features/invitation/presentation/pages/invitations_page.dart';
 
 class AppRouter {
   static const String onboarding = '/onboarding';
@@ -54,6 +56,7 @@ class AppRouter {
   static const String about = '/about';
   static const String createMinyan = '/create-minyan';
   static const String minyanim = '/minyanim';
+  static const String invitations = '/invitations';
 
   static final GoRouter router = GoRouter(
     initialLocation: onboarding,  // Start with onboarding for unauthenticated users
@@ -135,6 +138,15 @@ class AppRouter {
                 ),
               ],
               child: const CreateMinyanPage(),
+            ),
+          ),
+          GoRoute(
+            path: 'invitations',
+            builder: (context, state) => BlocProvider<InvitationBloc>.value(
+              value: getIt<InvitationBloc>(),
+              child: const InvitationsPage(
+                currentUserId: 'user_123',
+              ),
             ),
           ),
         ],

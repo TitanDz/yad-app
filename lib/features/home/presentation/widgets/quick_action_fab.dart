@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:yad_app/config/theme.dart';
 
 /// Quick action floating action button with expandable menu
 class QuickActionFAB extends StatefulWidget {
-  final VoidCallback? onCreateMinyan;
+  final VoidCallback? onSendInvitations;
   final VoidCallback? onSearch;
   final VoidCallback? onToggleAvailability;
   final bool isAvailable;
 
   const QuickActionFAB({
     super.key,
-    this.onCreateMinyan,
+    this.onSendInvitations,
     this.onSearch,
     this.onToggleAvailability,
     this.isAvailable = true,
@@ -92,7 +91,7 @@ class _QuickActionFABState extends State<QuickActionFAB>
 
   List<Widget> _buildMenuItems(BuildContext context) {
     return [
-      // Create Minyan action
+      // Send Invitations action
       Positioned(
         bottom: 120,
         right: 24,
@@ -101,12 +100,11 @@ class _QuickActionFABState extends State<QuickActionFAB>
           child: SlideTransition(
             position: _buildItemOffset(0),
             child: _buildActionButton(
-              icon: Icons.add_location_alt_outlined,
-              label: 'Create Minyan',
+              icon: Icons.mail_outline,
+              label: 'Send Invitations',
               onTap: () {
                 _toggleMenu();
-                widget.onCreateMinyan?.call();
-                context.push('/create-minyan');
+                widget.onSendInvitations?.call();
               },
             ),
           ),

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:yad_app/core/services/centroid_calculation_service.dart';
 import 'package:yad_app/features/home/domain/entities/location_suggestion.dart';
 import 'package:yad_app/features/home/domain/entities/voting_session.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';

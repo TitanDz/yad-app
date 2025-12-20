@@ -118,7 +118,7 @@ class ActiveUserInfoWindow extends StatelessWidget {
 
           // Last seen
           Text(
-            'Last seen: ${_formatLastSeen(user.lastSeen!)}',
+            'Last seen: ${_formatLastSeen(user.lastSeen)}',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 11,

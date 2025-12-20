@@ -17,6 +17,8 @@ import 'package:yad_app/core/services/prayer_countdown_service.dart';
 import 'package:yad_app/core/services/user_preferences_manager.dart';
 import 'package:yad_app/features/home/presentation/pages/prayers_page.dart';
 import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
+import 'package:yad_app/features/invitation/presentation/bloc/invitation_bloc.dart';
+import 'package:yad_app/features/invitation/presentation/widgets/send_invitations_sheet.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -48,6 +50,7 @@ class _HomePageState extends State<HomePage> {
   bool _prayerTimesLoading = true;
   late ActiveUsersBloc _activeUsersBloc;
   bool _activeUsersLoaded = false;
+  late InvitationBloc _invitationBloc;
 
   @override
   void initState() {
@@ -65,6 +68,9 @@ class _HomePageState extends State<HomePage> {
     debugPrint('✅ [HomePage initState] ActiveUsersBloc initialized: ${_activeUsersBloc.hashCode}');
     // Initialize PrayerCountdownService
     _prayerCountdownService = getIt<PrayerCountdownService>();
+    // Initialize InvitationBloc for invitation system
+    _invitationBloc = getIt<InvitationBloc>();
+    debugPrint('✅ [HomePage initState] InvitationBloc initialized');
     
     // Add initialization event to HomeBloc only once
     _homeBloc.add(const InitializeMapEvent());
@@ -179,9 +185,63 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Handle sending invitations to nearby users
+  void _handleSendInvitations() {
+    final homeState = _homeBloc.state;
+    
+    // Check if map is ready
+    if (homeState is! HomeMapReady) {
+      debugPrint('❌ [_handleSendInvitations] Map not ready');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Map is initializing. Please wait.')),
+      );
+      return;
+    }
 
+    // Check if nearby users have been loaded
+    final activeUsersState = _activeUsersBloc.state;
+    if (activeUsersState is! ActiveUsersLoaded || activeUsersState.users.isEmpty) {
+      debugPrint('❌ [_handleSendInvitations] No nearby users loaded');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No nearby users found. Try moving to a different location.')),
+      );
+      return;
+    }
 
-  /// Get user location and reverse geocode to city/country
+    debugPrint('✅ [_handleSendInvitations] Opening invitation sheet with ${activeUsersState.users.length} nearby users');
+
+    // Show the SendInvitationsSheet
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SendInvitationsSheet(
+        nearbyUsers: activeUsersState.users,
+        minyanDetails: 'Minyan - Prayer Time TBD',
+        onSendInvitations: (selectedUserIds) {
+          // Send invitations to selected users
+          if (selectedUserIds.isEmpty) return;
+
+          debugPrint('📤 [_handleSendInvitations] Sending invitations to ${selectedUserIds.length} users');
+
+          // Use InvitationBloc to send invitations
+          _invitationBloc.add(
+            SendInvitationsEvent(
+              minyanId: 'minyan_${DateTime.now().millisecondsSinceEpoch}',
+              senderId: _userId,
+              senderName: 'Current User',
+              recipientIds: selectedUserIds,
+              minyanDetails: 'Minyan - Prayer Time TBD',
+            ),
+          );
+
+          // Show confirmation
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sent invitations to ${selectedUserIds.length} users')),
+          );
+        },
+      ),
+    );
+  }
   Future<void> _getUserLocationAndCity() async {
     try {
       final homeBloc = context.read<HomeBloc>();
@@ -614,8 +674,8 @@ class _HomePageState extends State<HomePage> {
           ? QuickActionFAB(
               isAvailable: _availabilityBloc.state is AvailabilityLoaded &&
                   !(_availabilityBloc.state as AvailabilityLoaded).status.isCurrentlyUnavailable,
-              onCreateMinyan: () {
-                context.push('/create-minyan');
+              onSendInvitations: () {
+                _handleSendInvitations();
               },
               onSearch: () {
                 // Focus on search bar
@@ -706,6 +766,28 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       // Right side: Settings Button
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.mail_outline,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          onPressed: () {
+                            context.push('/invitations');
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Invitations',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Container(
                         width: 48,
                         height: 48,
