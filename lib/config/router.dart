@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:yad_app/config/service_locator.dart';
 import 'package:yad_app/features/auth/data/datasources/otp_datasource.dart';
 import 'package:yad_app/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:yad_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:yad_app/features/auth/presentation/bloc/otp_bloc.dart';
+import 'package:yad_app/features/invitation/presentation/pages/invitations_page.dart' as invitations;
 import 'package:yad_app/features/auth/presentation/pages/login_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/otp_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/register_page.dart';
@@ -31,7 +33,45 @@ import 'package:yad_app/features/settings/presentation/pages/about_page.dart';
 import 'package:yad_app/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/welcome_page.dart';
 import 'package:yad_app/features/invitation/presentation/bloc/invitation_bloc.dart';
-import 'package:yad_app/features/invitation/presentation/pages/invitations_page.dart';
+
+// Wrapper widget to access AuthBloc context for invitations page
+class _InvitationsPageWrapper extends StatelessWidget {
+  const _InvitationsPageWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    // Get the user ID from the registered AuthBloc singleton
+    String userId = 'user_123'; // Fallback
+    
+    try {
+      // Access AuthBloc from service locator
+      final authBloc = getIt<AuthBloc>();
+      final authState = authBloc.state;
+      
+      if (authState is AuthAuthenticated) {
+        userId = authState.user.id;
+        debugPrint('✅ [_InvitationsPageWrapper] Got user ID from AuthAuthenticated: $userId');
+      } else if (authState is AuthLoginSuccess) {
+        userId = authState.user.id;
+        debugPrint('✅ [_InvitationsPageWrapper] Got user ID from AuthLoginSuccess: $userId');
+      } else if (authState is AuthRegistrationSuccess) {
+        userId = authState.user.id;
+        debugPrint('✅ [_InvitationsPageWrapper] Got user ID from AuthRegistrationSuccess: $userId');
+      } else {
+        debugPrint('⚠️ [_InvitationsPageWrapper] Unknown auth state type: ${authState.runtimeType}');
+      }
+    } catch (e) {
+      // If AuthBloc is not available, use fallback
+      debugPrint('⚠️ [_InvitationsPageWrapper] Could not read AuthBloc: $e');
+    }
+
+    debugPrint('📋 [_InvitationsPageWrapper] Loading invitations for user: $userId');
+    
+    return invitations.InvitationsPage(
+      currentUserId: userId,
+    );
+  }
+}
 
 class AppRouter {
   static const String onboarding = '/onboarding';
@@ -144,9 +184,7 @@ class AppRouter {
             path: 'invitations',
             builder: (context, state) => BlocProvider<InvitationBloc>.value(
               value: getIt<InvitationBloc>(),
-              child: const InvitationsPage(
-                currentUserId: 'user_123',
-              ),
+              child: const _InvitationsPageWrapper(),
             ),
           ),
         ],

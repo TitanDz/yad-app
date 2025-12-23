@@ -19,6 +19,8 @@ import 'package:yad_app/features/home/presentation/pages/prayers_page.dart';
 import 'package:yad_app/features/home/presentation/pages/notifications_home_page.dart';
 import 'package:yad_app/features/invitation/presentation/bloc/invitation_bloc.dart';
 import 'package:yad_app/features/invitation/presentation/widgets/send_invitations_sheet.dart';
+import 'package:yad_app/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:yad_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -148,15 +150,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Load nearby active users on the map
-  void _loadNearbyActiveUsers() {
+  void _loadNearbyActiveUsers({bool forceReload = false}) {
     debugPrint('🔵 [_loadNearbyActiveUsers] Called, checking HomeBloc state...');
     debugPrint('   Current state type: ${_homeBloc.state.runtimeType}');
     debugPrint('   _activeUsersLoaded flag: $_activeUsersLoaded');
+    debugPrint('   forceReload: $forceReload');
     
     // Check if map is ready right away
     final homeState = _homeBloc.state;
     if (homeState is HomeMapReady) {
-      if (_activeUsersLoaded) {
+      if (_activeUsersLoaded && !forceReload) {
         debugPrint('🔵 [_loadNearbyActiveUsers] Users already loaded, skipping...');
         return;
       }
@@ -180,7 +183,7 @@ class _HomePageState extends State<HomePage> {
       debugPrint('   Will retry in 500ms...');
       Future.delayed(const Duration(milliseconds: 500), () {
         debugPrint('🔵 [_loadNearbyActiveUsers] Retrying after delay...');
-        _loadNearbyActiveUsers();
+        _loadNearbyActiveUsers(forceReload: forceReload);
       });
     }
   }
@@ -723,45 +726,48 @@ class _HomePageState extends State<HomePage> {
                           size: 24,
                         ),
                       ),
-                      // Center: Next Prayer Info (Enhanced for readability, constrained width)
+                      // Center: Personalized greeting message
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Tooltip(
-                                message: _prayerTimes.isNotEmpty
-                                    ? 'Next: ${_prayerTimes[0].name}'
-                                    : 'Prayer Times',
-                                child: Text(
-                                  _prayerTimes.isNotEmpty
-                                      ? _prayerTimes[0].name
-                                      : 'Prayer Times',
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (_prayerTimes.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    _prayerTimes[0].displayStartTime,
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          color: Colors.white.withValues(alpha: 0.9),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
+                          child: StatefulBuilder(
+                            builder: (context, setState) {
+                              String greeting = 'Welcome';
+                              
+                              // Get user from AuthBloc using service locator
+                              try {
+                                final authBloc = getIt<AuthBloc>();
+                                final authState = authBloc.state;
+                                
+                                if (authState is AuthAuthenticated) {
+                                  greeting = 'Welcome, ${authState.user.firstName}';
+                                } else if (authState is AuthLoginSuccess) {
+                                  greeting = 'Welcome, ${authState.user.firstName}';
+                                } else if (authState is AuthRegistrationSuccess) {
+                                  greeting = 'Welcome, ${authState.user.firstName}';
+                                }
+                              } catch (e) {
+                                debugPrint('⚠️ [HomePage] Could not read AuthBloc: $e');
+                              }
+                              
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    greeting,
+                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
                                         ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                            ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -918,13 +924,11 @@ class _HomePageState extends State<HomePage> {
                   child: const SizedBox.shrink(),
                 ),
                 
-                // BlocListener for active user markers - dispatch only once when users load
+                // BlocListener for active user markers - dispatch when users load
                 BlocListener<ActiveUsersBloc, ActiveUsersState>(
                   listenWhen: (previous, current) {
-                    // Only dispatch when we transition TO ActiveUsersLoaded state
-                    final wasLoaded = previous is ActiveUsersLoaded;
-                    final isLoaded = current is ActiveUsersLoaded && current.users.isNotEmpty;
-                    return !wasLoaded && isLoaded; // Only trigger on state change, not every rebuild
+                    // Trigger whenever we have loaded users (even if reloading from same state)
+                    return current is ActiveUsersLoaded && current.users.isNotEmpty;
                   },
                   listener: (context, activeUsersState) {
                     if (activeUsersState is ActiveUsersLoaded) {

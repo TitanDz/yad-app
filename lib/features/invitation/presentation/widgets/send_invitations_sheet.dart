@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yad_app/features/home/domain/entities/active_user_marker.dart';
 
-class SendInvitationsSheet extends StatefulWidget {
+class SendInvitationsSheet extends StatelessWidget {
   final List<ActiveUserMarker> nearbyUsers;
   final String minyanDetails;
   final Function(List<String>) onSendInvitations;
@@ -14,20 +14,10 @@ class SendInvitationsSheet extends StatefulWidget {
   });
 
   @override
-  State<SendInvitationsSheet> createState() => _SendInvitationsSheetState();
-}
-
-class _SendInvitationsSheetState extends State<SendInvitationsSheet> {
-  late Set<String> selectedUserIds;
-
-  @override
-  void initState() {
-    super.initState();
-    selectedUserIds = {};
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Automatically include all users
+    final allUserIds = nearbyUsers.map((u) => u.userId).toList();
+
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -49,7 +39,7 @@ class _SendInvitationsSheetState extends State<SendInvitationsSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Invite nearby users',
+                    'Invite all nearby users',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
@@ -57,14 +47,14 @@ class _SendInvitationsSheetState extends State<SendInvitationsSheet> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.minyanDetails,
+                    minyanDetails,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.grey[700],
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Selected: ${selectedUserIds.length}/${widget.nearbyUsers.length}',
+                    'Ready to send to ${nearbyUsers.length} nearby users',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: Colors.blue[700],
                       fontWeight: FontWeight.w600,
@@ -73,9 +63,9 @@ class _SendInvitationsSheetState extends State<SendInvitationsSheet> {
                 ],
               ),
             ),
-            // List of users
+            // List of users (read-only display)
             Expanded(
-              child: widget.nearbyUsers.isEmpty
+              child: nearbyUsers.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -97,59 +87,79 @@ class _SendInvitationsSheetState extends State<SendInvitationsSheet> {
                     )
                   : ListView.builder(
                       controller: scrollController,
-                      itemCount: widget.nearbyUsers.length,
+                      itemCount: nearbyUsers.length,
                       itemBuilder: (context, index) {
-                        final user = widget.nearbyUsers[index];
-                        final isSelected = selectedUserIds.contains(user.userId);
+                        final user = nearbyUsers[index];
 
-                        return CheckboxListTile(
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: Text(
-                            user.name,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                        return Container(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.grey[200]!,
+                              ),
                             ),
                           ),
-                          subtitle: Row(
-                            children: [
-                              Text(
-                                '${user.distance?.toStringAsFixed(1) ?? "??"} km away',
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
-                              const SizedBox(width: 12),
-                              user.isAvailable
-                                  ? Chip(
-                                      label: const Text('Available'),
-                                      backgroundColor: Colors.green.withValues(alpha: 0.15),
-                                      labelStyle: const TextStyle(
-                                        color: Colors.green,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                // User info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        user.name,
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    )
-                                  : Chip(
-                                      label: Text('In ${user.minutesUnavailable}m'),
-                                      backgroundColor: Colors.orange.withValues(alpha: 0.15),
-                                      labelStyle: const TextStyle(
-                                        color: Colors.orange,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '${user.distance?.toStringAsFixed(1) ?? "??"} km away',
+                                            style: Theme.of(context).textTheme.labelSmall,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          user.isAvailable
+                                              ? Chip(
+                                                  label: const Text('Available'),
+                                                  backgroundColor: Colors.green.withValues(alpha: 0.15),
+                                                  labelStyle: const TextStyle(
+                                                    color: Colors.green,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                )
+                                              : Chip(
+                                                  label: Text('In ${user.minutesUnavailable}m'),
+                                                  backgroundColor: Colors.orange.withValues(alpha: 0.15),
+                                                  labelStyle: const TextStyle(
+                                                    color: Colors.orange,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                ),
+                                        ],
                                       ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    ),
-                            ],
+                                    ],
+                                  ),
+                                ),
+                                // Checkmark icon indicating all will be included
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green[600],
+                                  size: 20,
+                                ),
+                              ],
+                            ),
                           ),
-                          value: isSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              if (value ?? false) {
-                                selectedUserIds.add(user.userId);
-                              } else {
-                                selectedUserIds.remove(user.userId);
-                              }
-                            });
-                          },
                         );
                       },
                     ),
@@ -167,17 +177,17 @@ class _SendInvitationsSheetState extends State<SendInvitationsSheet> {
               child: Column(
                 children: [
                   ElevatedButton(
-                    onPressed: selectedUserIds.isEmpty
+                    onPressed: nearbyUsers.isEmpty
                         ? null
                         : () {
-                            widget.onSendInvitations(selectedUserIds.toList());
+                            onSendInvitations(allUserIds);
                             Navigator.pop(context);
                           },
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                     ),
                     child: Text(
-                      'Send Invitations (${selectedUserIds.length})',
+                      'Send Invitations to All (${nearbyUsers.length})',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),

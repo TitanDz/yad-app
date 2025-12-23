@@ -22,6 +22,18 @@ class MockActiveUsersDataSource implements ActiveUsersDataSource {
   /// Static list of all available test users
   /// Expanded for comprehensive testing scenarios
   static final List<ActiveUserMarker> _allTestUsers = [
+    // Test account 2 - for invitation testing
+    ActiveUserMarker(
+      userId: '2', // Matches test2@example.com ID
+      name: 'Test2 User',
+      latitude: 40.7128, // NYC baseline
+      longitude: -74.0060,
+      address: 'Test Location 2',
+      isAvailable: true,
+      minutesUnavailable: 0,
+      lastPrayerType: 'Mincha',
+      distance: 0.1,
+    ),
     // Group 1: Immediately available users (0.2 - 0.5 km)
     ActiveUserMarker(
       userId: 'user_001',

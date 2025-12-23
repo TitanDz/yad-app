@@ -33,7 +33,9 @@ class InvitationCard extends StatelessWidget {
                   backgroundColor: Colors.blue,
                   radius: 28,
                   child: Text(
-                    invitation.senderName.characters.first.toUpperCase(),
+                    invitation.senderName.isNotEmpty
+                        ? invitation.senderName.characters.first.toUpperCase()
+                        : '?',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -54,7 +56,7 @@ class InvitationCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${invitation.distanceKm.toStringAsFixed(1)} km away',
+                        '${(invitation.distanceKm ?? 0).toStringAsFixed(1)} km away',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey[600],
                         ),
@@ -86,7 +88,7 @@ class InvitationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Sent ${_timeAgo(invitation.sentAt)}',
+                    'Sent ${_timeAgo(invitation.sentAt ?? DateTime.now())}',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.grey[600],
                     ),
