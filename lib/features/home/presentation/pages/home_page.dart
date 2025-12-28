@@ -11,6 +11,7 @@ import 'package:yad_app/features/home/presentation/bloc/availability_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/active_users_bloc.dart';
 import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
+import 'package:yad_app/features/home/presentation/widgets/next_prayer_countdown.dart';
 import 'package:yad_app/features/home/presentation/bloc/notification_bloc.dart';
 import 'package:yad_app/features/home/domain/entities/minyan.dart';
 import 'package:yad_app/core/services/prayer_countdown_service.dart';
@@ -53,6 +54,7 @@ class _HomePageState extends State<HomePage> {
   late ActiveUsersBloc _activeUsersBloc;
   bool _activeUsersLoaded = false;
   late InvitationBloc _invitationBloc;
+  String? _currentUserId; // Track current user to detect account switches
 
   @override
   void initState() {
@@ -74,6 +76,9 @@ class _HomePageState extends State<HomePage> {
     _invitationBloc = getIt<InvitationBloc>();
     debugPrint('✅ [HomePage initState] InvitationBloc initialized');
     
+    // Set up listener to detect user changes
+    _setupAuthListener();
+    
     // Add initialization event to HomeBloc only once
     _homeBloc.add(const InitializeMapEvent());
     // Initialize availability tracking
@@ -90,6 +95,17 @@ class _HomePageState extends State<HomePage> {
     // Get user location and city/country
     _getUserLocationAndCity();
     debugPrint('✅ [HomePage initState] Initialization complete');
+  }
+
+  @override
+  void didUpdateWidget(HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Always check for user changes when widget updates
+    // This catches cases where user navigates back after logging in with a different account
+    debugPrint('🔄 [HomePage didUpdateWidget] Widget updated, checking user change...');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndHandleUserChange();
+    });
   }
 
   @override
@@ -115,6 +131,73 @@ class _HomePageState extends State<HomePage> {
     context.read<HomeBloc>().add(const ClearSearchEvent());
   }
 
+  /// Set up listener to detect user account changes and reload nearby users
+  void _setupAuthListener() {
+    try {
+      final authBloc = getIt<AuthBloc>();
+      // Get current user ID from auth state
+      _updateCurrentUserId();
+      
+      debugPrint('👤 [_setupAuthListener] Initialized with user ID: $_currentUserId');
+      
+      // Listen for auth state changes using stream listener
+      authBloc.stream.listen((authState) {
+        debugPrint('👤 [_setupAuthListener] AuthBloc state changed to: ${authState.runtimeType}');
+        _checkAndHandleUserChange();
+      });
+    } catch (e) {
+      debugPrint('⚠️ [_setupAuthListener] Could not set up auth listener: $e');
+    }
+  }
+
+  /// Extract and return the current user ID from AuthBloc
+  String? _extractUserIdFromAuthState(AuthState authState) {
+    if (authState is AuthAuthenticated) {
+      return authState.user.id;
+    } else if (authState is AuthLoginSuccess) {
+      return authState.user.id;
+    } else if (authState is AuthRegistrationSuccess) {
+      return authState.user.id;
+    }
+    return null;
+  }
+
+  /// Update the stored current user ID from AuthBloc state
+  void _updateCurrentUserId() {
+    try {
+      final authBloc = getIt<AuthBloc>();
+      final authState = authBloc.state;
+      final newUserId = _extractUserIdFromAuthState(authState);
+      _currentUserId = newUserId;
+      debugPrint('👤 [_updateCurrentUserId] Current user ID: $_currentUserId');
+    } catch (e) {
+      debugPrint('⚠️ [_updateCurrentUserId] Error: $e');
+    }
+  }
+
+  /// Check if user has changed and reload nearby users if so
+  void _checkAndHandleUserChange() {
+    try {
+      final authBloc = getIt<AuthBloc>();
+      final authState = authBloc.state;
+      final newUserId = _extractUserIdFromAuthState(authState);
+      
+      debugPrint('👤 [_checkAndHandleUserChange] Current: $_currentUserId, New: $newUserId');
+      
+      // If user ID changed, reset and reload nearby users
+      if (newUserId != null && _currentUserId != newUserId) {
+        debugPrint('🔄 [_checkAndHandleUserChange] User switched from $_currentUserId to $newUserId');
+        debugPrint('🔄 [_checkAndHandleUserChange] Resetting nearby active users and reloading...');
+        _currentUserId = newUserId;
+        _activeUsersLoaded = false;
+        _refreshTriggered = false;
+        _loadNearbyActiveUsers(forceReload: true);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [_checkAndHandleUserChange] Error checking user: $e');
+    }
+  }
+
   /// Initialize prayer times with current location
   void _initializePrayerTimes() {
     try {
@@ -130,6 +213,10 @@ class _HomePageState extends State<HomePage> {
       );
       
       _prayerCountdownService.addListener((prayerTimes) {
+        debugPrint('🙏 [_initializePrayerTimes] Listener called with ${prayerTimes.length} prayer times');
+        for (final prayer in prayerTimes) {
+          debugPrint('   - ${prayer.name}: ${prayer.displayStartTime} (timeUntilStart: ${prayer.timeUntilStart})');
+        }
         if (mounted) {
           setState(() {
             _prayerTimes = prayerTimes;
@@ -142,6 +229,10 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _prayerTimes = _prayerCountdownService.getPrayerTimes();
         _prayerTimesLoading = _prayerTimes.isEmpty;
+        debugPrint('🙏 [_initializePrayerTimes] Initial prayer times: ${_prayerTimes.length}');
+        for (final prayer in _prayerTimes) {
+          debugPrint('   - ${prayer.name}: ${prayer.displayStartTime}');
+        }
       });
     } catch (e) {
       debugPrint('[HomePage] Error initializing prayer times: $e');
@@ -827,6 +918,11 @@ class _HomePageState extends State<HomePage> {
                         // Trigger any additional updates needed
                       },
                     ),
+                  ),
+                  // Next Prayer Countdown - shows upcoming prayer with timer
+                  NextPrayerCountdown(
+                    prayerTimes: _prayerTimes,
+                    isLoading: _prayerTimesLoading,
                   ),
                 ],
               ),
