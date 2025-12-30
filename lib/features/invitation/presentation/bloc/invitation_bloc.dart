@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yad_app/features/invitation/domain/entities/invitation.dart';
 import 'package:yad_app/features/invitation/data/datasources/invitation_datasource.dart';
+import 'package:yad_app/features/invitation/data/datasources/group_lobby_datasource.dart';
 
 // Events
 abstract class InvitationEvent extends Equatable {
@@ -171,8 +172,12 @@ class InvitationError extends InvitationState {
 // BLoC
 class InvitationBloc extends Bloc<InvitationEvent, InvitationState> {
   final InvitationDataSource dataSource;
+  final GroupLobbyDataSource? lobbyDataSource;
 
-  InvitationBloc({required this.dataSource}) : super(const InvitationInitial()) {
+  InvitationBloc({
+    required this.dataSource,
+    this.lobbyDataSource,
+  }) : super(const InvitationInitial()) {
     on<LoadPendingInvitationsEvent>(_onLoadPendingInvitations);
     on<RespondToInvitationEvent>(_onRespondToInvitation);
     on<SendInvitationsEvent>(_onSendInvitations);

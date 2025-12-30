@@ -26,6 +26,7 @@ import 'package:yad_app/features/settings/presentation/bloc/theme_bloc.dart';
 import 'package:yad_app/shared/constants/app_constants.dart';
 import 'package:yad_app/core/services/prayer_countdown_service.dart';
 import 'package:yad_app/features/invitation/data/datasources/invitation_datasource.dart';
+import 'package:yad_app/features/invitation/data/datasources/group_lobby_datasource.dart';
 import 'package:yad_app/features/invitation/presentation/bloc/invitation_bloc.dart';
 
 final getIt = GetIt.instance;
@@ -125,8 +126,17 @@ Future<void> setupServiceLocator() async {
     LocationVotingBloc(),
   );
 
+  // Group lobby datasource for managing minyan formation groups
+  getIt.registerSingleton<GroupLobbyDataSource>(
+    MockGroupLobbyDataSource(),
+  );
+
   // Invitation bloc for managing invitations to nearby users
   getIt.registerSingleton<InvitationBloc>(
-    InvitationBloc(dataSource: MockInvitationDataSource()),
+    InvitationBloc(
+      dataSource: MockInvitationDataSource(
+        lobbyDataSource: getIt<GroupLobbyDataSource>(),
+      ),
+    ),
   );
 }

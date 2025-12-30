@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yad_app/features/invitation/presentation/bloc/invitation_bloc.dart';
+import 'package:yad_app/features/invitation/presentation/bloc/group_lobby_bloc.dart';
+import 'package:yad_app/features/invitation/data/datasources/group_lobby_datasource.dart';
 import 'package:yad_app/features/invitation/presentation/widgets/invitation_card.dart';
 import 'package:yad_app/features/invitation/presentation/widgets/acceptance_notification_card.dart';
+import 'package:yad_app/features/invitation/presentation/widgets/group_lobby_widget.dart';
 import 'package:yad_app/features/invitation/domain/entities/invitation.dart';
+import 'package:yad_app/config/service_locator.dart';
 
 class InvitationsPage extends StatefulWidget {
   final String currentUserId;
@@ -20,6 +24,7 @@ class InvitationsPage extends StatefulWidget {
 class _InvitationsPageState extends State<InvitationsPage>
     with TickerProviderStateMixin {
   late InvitationBloc _invitationBloc;
+  late GroupLobbyBloc _groupLobbyBloc;
   String? _loadingInvitationId;
   late TabController _tabController;
 
@@ -27,10 +32,14 @@ class _InvitationsPageState extends State<InvitationsPage>
   void initState() {
     super.initState();
     _invitationBloc = context.read<InvitationBloc>();
+    _groupLobbyBloc = GroupLobbyBloc(dataSource: getIt<GroupLobbyDataSource>());
     _tabController = TabController(length: 2, vsync: this);
     
     // Load pending invitations when page opens
     _invitationBloc.add(LoadPendingInvitationsEvent(widget.currentUserId));
+    
+    // Load user's lobbies
+    _groupLobbyBloc.add(LoadUserLobbiesEvent(widget.currentUserId));
     
     // Listen for tab changes to load acceptance notifications when "Accepted" tab is tapped
     _tabController.addListener(_onTabChanged);
@@ -40,6 +49,7 @@ class _InvitationsPageState extends State<InvitationsPage>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _groupLobbyBloc.close();
     super.dispose();
   }
 
@@ -71,13 +81,42 @@ class _InvitationsPageState extends State<InvitationsPage>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          // Received invitations tab
-          _buildReceivedTab(),
-          // Accepted invitations tab
-          _buildAcceptedTab(),
+          // Group Lobby Information
+          BlocBuilder<GroupLobbyBloc, GroupLobbyState>(
+            bloc: _groupLobbyBloc,
+            builder: (context, state) {
+              if (state is UserLobbiesLoaded && state.lobbies.isNotEmpty) {
+                // Show the first active lobby if available
+                final lobby = state.lobbies.first;
+                return GroupLobbyWidget(
+                  lobby: lobby,
+                  currentUserId: widget.currentUserId,
+                );
+              } else if (state is GroupLobbyLoaded) {
+                return GroupLobbyWidget(
+                  lobby: state.lobby,
+                  currentUserId: widget.currentUserId,
+                );
+              } else {
+                // Show placeholder when no lobbies are active
+                return Container();
+              }
+            },
+          ),
+          // Tab content
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Received invitations tab
+                _buildReceivedTab(),
+                // Accepted invitations tab
+                _buildAcceptedTab(),
+              ],
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -91,6 +130,8 @@ class _InvitationsPageState extends State<InvitationsPage>
               LoadAcceptanceNotificationsEvent(widget.currentUserId),
             );
           }
+          // Also refresh lobbies
+          _groupLobbyBloc.add(LoadUserLobbiesEvent(widget.currentUserId));
         },
         icon: const Icon(Icons.refresh),
         label: const Text('Refresh'),

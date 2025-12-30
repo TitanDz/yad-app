@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:yad_app/features/invitation/domain/entities/invitation.dart';
+import 'package:yad_app/features/invitation/domain/entities/group_lobby.dart';
+import 'group_lobby_datasource.dart';
 
 abstract class InvitationDataSource {
   /// Send invitation to nearby users
@@ -38,6 +40,13 @@ abstract class InvitationDataSource {
 class MockInvitationDataSource implements InvitationDataSource {
   static final List<Invitation> _invitations = [];
   static final List<InvitationResponse> _acceptanceNotifications = [];
+  
+  // Add group lobby data source
+  final GroupLobbyDataSource _lobbyDataSource;  
+  
+  MockInvitationDataSource({
+    GroupLobbyDataSource? lobbyDataSource,
+  }) : _lobbyDataSource = lobbyDataSource ?? MockGroupLobbyDataSource();
 
   @override
   Future<void> sendInvitations({
@@ -50,6 +59,20 @@ class MockInvitationDataSource implements InvitationDataSource {
     required List<double> distances,
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
+
+    // Create a group lobby for this minyan invitation
+    final lobby = GroupLobby(
+      lobbyId: 'lobby_${DateTime.now().millisecondsSinceEpoch}',
+      minyanId: minyanId,
+      creatorId: senderId,
+      participantIds: [senderId], // Start with the creator
+      acceptances: [],
+      createdAt: DateTime.now(),
+      status: 'forming',
+    );
+    
+    await _lobbyDataSource.createGroupLobby(lobby);
+    debugPrint('✅ [GroupLobby] Created lobby for minyan $minyanId with creator $senderId');
 
     for (int i = 0; i < recipientIds.length; i++) {
       final recipientId = recipientIds[i];
@@ -133,6 +156,21 @@ class MockInvitationDataSource implements InvitationDataSource {
         debugPrint(
           '✅ [Invitation] Created notification: senderId=${notification.senderId}, recipient=${notification.recipientId}, stored in list (total now: ${_acceptanceNotifications.length})',
         );
+        
+        // Add the accepting participant to the corresponding group lobby
+        try {
+          final lobby = await _lobbyDataSource.getLobbyByMinyanId(old.minyanId);
+          if (lobby != null) {
+            await _lobbyDataSource.addParticipantToLobby(
+              lobbyId: lobby.lobbyId,
+              participantId: old.recipientId,
+              participantName: recipientName,
+            );
+            debugPrint('✅ [GroupLobby] Added participant ${old.recipientId} to lobby ${lobby.lobbyId} for minyan ${old.minyanId}');
+          }
+        } catch (e) {
+          debugPrint('❌ [GroupLobby] Error adding participant to lobby: $e');
+        }
       } else {
         debugPrint(
           '❌ [Invitation] $recipientName DECLINED invitation from ${old.senderName}',
