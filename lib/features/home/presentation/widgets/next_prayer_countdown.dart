@@ -16,24 +16,18 @@ class NextPrayerCountdown extends StatelessWidget {
   /// Get the next upcoming prayer
   PrayerTimeInfo? _getNextPrayer() {
     if (prayerTimes.isEmpty) {
-      debugPrint('[NextPrayerCountdown] Prayer times list is empty');
       return null;
     }
 
-    debugPrint('[NextPrayerCountdown] Checking ${prayerTimes.length} prayer times');
-    
     // Find the first prayer that hasn't started yet
     for (final prayer in prayerTimes) {
-      debugPrint('[NextPrayerCountdown] Prayer: ${prayer.name}, timeUntilStart: ${prayer.timeUntilStart}, isNegative: ${prayer.timeUntilStart.isNegative}');
       if (!prayer.timeUntilStart.isNegative) {
-        debugPrint('[NextPrayerCountdown] Found next prayer: ${prayer.name}');
         return prayer;
       }
     }
 
     // If no upcoming prayer today, show the last prayer of the day
     // This way users can see the last prayer time even if it has passed
-    debugPrint('[NextPrayerCountdown] No upcoming prayers found, showing last prayer of the day');
     if (prayerTimes.isNotEmpty) {
       return prayerTimes.last;
     }
@@ -63,8 +57,6 @@ class NextPrayerCountdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nextPrayer = _getNextPrayer();
-
-    debugPrint('[NextPrayerCountdown.build] prayerTimes.length=${prayerTimes.length}, isLoading=$isLoading, nextPrayer=${nextPrayer?.name}');
 
     if (isLoading) {
       // Show loading state instead of hiding
@@ -106,7 +98,6 @@ class NextPrayerCountdown extends StatelessWidget {
 
     if (nextPrayer == null) {
       // No prayer found - show message
-      debugPrint('[NextPrayerCountdown] No prayer found, showing empty state');
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         padding: const EdgeInsets.all(14),

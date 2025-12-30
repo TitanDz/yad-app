@@ -77,7 +77,9 @@ class _HomePageState extends State<HomePage> {
     debugPrint('✅ [HomePage initState] InvitationBloc initialized');
     
     // Set up listener to detect user changes
+    debugPrint('[HomePage initState] Setting up auth listener...');
     _setupAuthListener();
+    debugPrint('[HomePage initState] Auth listener setup complete, _currentUserId=$_currentUserId');
     
     // Add initialization event to HomeBloc only once
     _homeBloc.add(const InitializeMapEvent());
@@ -138,15 +140,23 @@ class _HomePageState extends State<HomePage> {
       // Get current user ID from auth state
       _updateCurrentUserId();
       
-      debugPrint('👤 [_setupAuthListener] Initialized with user ID: $_currentUserId');
+      debugPrint('[_setupAuthListener] Initialized with user ID: $_currentUserId');
       
       // Listen for auth state changes using stream listener
       authBloc.stream.listen((authState) {
-        debugPrint('👤 [_setupAuthListener] AuthBloc state changed to: ${authState.runtimeType}');
+        debugPrint('[_setupAuthListener] **STREAM EVENT** AuthBloc emitted state: ${authState.runtimeType}');
+        final userId = _extractUserIdFromAuthState(authState);
+        debugPrint('[_setupAuthListener] Extracted userId from state: $userId');
         _checkAndHandleUserChange();
+      }, onError: (error) {
+        debugPrint('[_setupAuthListener] Stream error: $error');
+      }, onDone: () {
+        debugPrint('[_setupAuthListener] Stream closed/done');
       });
+      
+      debugPrint('[_setupAuthListener] Stream listener registered successfully');
     } catch (e) {
-      debugPrint('⚠️ [_setupAuthListener] Could not set up auth listener: $e');
+      debugPrint('[_setupAuthListener] Could not set up auth listener: $e');
     }
   }
 
@@ -182,19 +192,23 @@ class _HomePageState extends State<HomePage> {
       final authState = authBloc.state;
       final newUserId = _extractUserIdFromAuthState(authState);
       
-      debugPrint('👤 [_checkAndHandleUserChange] Current: $_currentUserId, New: $newUserId');
+      debugPrint('[_checkAndHandleUserChange] Current: $_currentUserId, New: $newUserId, AuthState: ${authState.runtimeType}');
       
       // If user ID changed, reset and reload nearby users
       if (newUserId != null && _currentUserId != newUserId) {
-        debugPrint('🔄 [_checkAndHandleUserChange] User switched from $_currentUserId to $newUserId');
-        debugPrint('🔄 [_checkAndHandleUserChange] Resetting nearby active users and reloading...');
+        debugPrint('[_checkAndHandleUserChange] **USER SWITCHED** from $_currentUserId to $newUserId');
+        debugPrint('[_checkAndHandleUserChange] Resetting flags for new user');
         _currentUserId = newUserId;
-        _activeUsersLoaded = false;
-        _refreshTriggered = false;
+        _activeUsersLoaded = false;  // CRITICAL: Reset flag to allow reload
+        _refreshTriggered = false;    // Reset refresh flag
+        debugPrint('[_checkAndHandleUserChange] Calling _loadNearbyActiveUsers(forceReload: true)');
         _loadNearbyActiveUsers(forceReload: true);
+        debugPrint('[_checkAndHandleUserChange] User switch handling complete');
+      } else {
+        debugPrint('[_checkAndHandleUserChange] No user change detected (newUserId=$newUserId, _currentUserId=$_currentUserId)');
       }
     } catch (e) {
-      debugPrint('⚠️ [_checkAndHandleUserChange] Error checking user: $e');
+      debugPrint('[_checkAndHandleUserChange] Error checking user: $e');
     }
   }
 
@@ -213,10 +227,6 @@ class _HomePageState extends State<HomePage> {
       );
       
       _prayerCountdownService.addListener((prayerTimes) {
-        debugPrint('🙏 [_initializePrayerTimes] Listener called with ${prayerTimes.length} prayer times');
-        for (final prayer in prayerTimes) {
-          debugPrint('   - ${prayer.name}: ${prayer.displayStartTime} (timeUntilStart: ${prayer.timeUntilStart})');
-        }
         if (mounted) {
           setState(() {
             _prayerTimes = prayerTimes;
@@ -229,10 +239,6 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _prayerTimes = _prayerCountdownService.getPrayerTimes();
         _prayerTimesLoading = _prayerTimes.isEmpty;
-        debugPrint('🙏 [_initializePrayerTimes] Initial prayer times: ${_prayerTimes.length}');
-        for (final prayer in _prayerTimes) {
-          debugPrint('   - ${prayer.name}: ${prayer.displayStartTime}');
-        }
       });
     } catch (e) {
       debugPrint('[HomePage] Error initializing prayer times: $e');
@@ -267,7 +273,8 @@ class _HomePageState extends State<HomePage> {
           radiusKm: 10.0, // 10 km search radius
         ),
       );
-      _activeUsersLoaded = true;
+      // CRITICAL FIX: Don't set flag here - only set it after markers are successfully created
+      // This is now handled by the BlocListener for ActiveUsersBloc
     } else {
       // If not ready yet, schedule a retry
       debugPrint('⏳ [_loadNearbyActiveUsers] Map not ready yet (state: ${homeState.runtimeType})');
@@ -1019,6 +1026,29 @@ class _HomePageState extends State<HomePage> {
                   },
                   child: const SizedBox.shrink(),
                 ),
+
+                // BlocListener to retry loading active users when map becomes ready and users haven't loaded yet
+                BlocListener<HomeBloc, HomeState>(
+                  listenWhen: (previous, current) {
+                    // Detect transition to HomeMapReady state when users haven't been loaded
+                    if (current is HomeMapReady && !_activeUsersLoaded) {
+                      // Only trigger if this is a state transition (not just a marker update)
+                      if (previous is! HomeMapReady || (previous is HomeMapReady && previous.minyans.length != current.minyans.length)) {
+                        return true;
+                      }
+                    }
+                    return false;
+                  },
+                  listener: (context, state) {
+                    if (state is HomeMapReady && !_activeUsersLoaded) {
+                      debugPrint('\n🎯 [BlocListener] Detected HomeMapReady without loaded users - retrying active user load...');
+                      Future.delayed(const Duration(milliseconds: 200), () {
+                        _loadNearbyActiveUsers();
+                      });
+                    }
+                  },
+                  child: const SizedBox.shrink(),
+                ),
                 
                 // BlocListener for active user markers - dispatch when users load
                 BlocListener<ActiveUsersBloc, ActiveUsersState>(
@@ -1030,6 +1060,57 @@ class _HomePageState extends State<HomePage> {
                     if (activeUsersState is ActiveUsersLoaded) {
                       debugPrint('🔵 [ActiveUsersBloc] Loaded ${activeUsersState.users.length} active users - dispatching to HomeBloc...');
                       _homeBloc.add(LoadActiveUserMarkersEvent(activeUsersState.users));
+                      // NOTE: Do NOT set flag here - it will be set when markers actually appear
+                    }
+                  },
+                  child: const SizedBox.shrink(),
+                ),
+                // Additional listener: If users loaded but map not ready, re-dispatch when map becomes ready
+                BlocListener<HomeBloc, HomeState>(
+                  listenWhen: (previous, current) {
+                    // Detect when map transitions to HomeMapReady AND users are loaded but not displayed
+                    if (current is HomeMapReady && previous is! HomeMapReady && !_activeUsersLoaded) {
+                      final activeUsersState = context.read<ActiveUsersBloc>().state;
+                      return activeUsersState is ActiveUsersLoaded && activeUsersState.users.isNotEmpty;
+                    }
+                    return false;
+                  },
+                  listener: (context, homeState) {
+                    if (homeState is HomeMapReady && !_activeUsersLoaded) {
+                      final activeUsersState = context.read<ActiveUsersBloc>().state;
+                      if (activeUsersState is ActiveUsersLoaded && activeUsersState.users.isNotEmpty) {
+                        debugPrint('🔵 [Safety Listener] Map ready and users loaded but not displayed - re-dispatching event...');
+                        _homeBloc.add(LoadActiveUserMarkersEvent(activeUsersState.users));
+                      }
+                    }
+                  },
+                  child: const SizedBox.shrink(),
+                ),
+                // BlocListener to mark users as loaded when HomeBloc confirms markers are displayed
+                BlocListener<HomeBloc, HomeState>(
+                  listenWhen: (previous, current) {
+                    // Detect when user markers are added to the map
+                    if (current is HomeMapReady && previous is HomeMapReady) {
+                      // Check if user markers count increased (indicates new user markers added)
+                      final previousUserMarkers = previous.markers
+                          .where((m) => m.markerId.value.startsWith('user_'))
+                          .length;
+                      final currentUserMarkers = current.markers
+                          .where((m) => m.markerId.value.startsWith('user_'))
+                          .length;
+                      return currentUserMarkers > previousUserMarkers;
+                    }
+                    return false;
+                  },
+                  listener: (context, state) {
+                    if (state is HomeMapReady) {
+                      final userMarkersCount = state.markers
+                          .where((m) => m.markerId.value.startsWith('user_'))
+                          .length;
+                      if (userMarkersCount > 0) {
+                        debugPrint('🎯 [HomeBloc Listener] Detected ${userMarkersCount} user markers on map - setting flag...');
+                        _activeUsersLoaded = true;
+                      }
                     }
                   },
                   child: const SizedBox.shrink(),

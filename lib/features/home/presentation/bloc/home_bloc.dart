@@ -235,6 +235,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final LocationService _locationService;
   final PlaceRepository _placeRepository;
   final MinyanRepository _minyanRepository;
+  int? _retryCount; // Track retry attempts for event handling
 
   HomeBloc({
     LocationService? locationService,
@@ -371,7 +372,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       // Create markers for minyans (using custom pinMap-styled blue markers)
       final minyanMarkerIcon = await _createMinyanMarker();
       final minyanMarkers = nearbyMinyans.map((minyan) {
-        debugPrint('   🛍️ Creating marker for minyan: ${minyan.id} | ${minyan.locationName}');
         return Marker(
           markerId: MarkerId('minyan_${minyan.id}'),
           position: LatLng(minyan.latitude, minyan.longitude),
@@ -420,7 +420,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         synagogues: savedPlaces,
         minyans: nearbyMinyans,
       ));
-      debugPrint('✅ Map initialization complete with ${updatedMarkers.length} markers (${placeMarkers.length} synagogues, ${minyanMarkers.length} minyans)');
     } catch (e, stackTrace) {
       debugPrint('❌ Fatal map initialization error: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -789,7 +788,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       // Create markers for minyans
       final minyanMarkerIcon = await _createMinyanMarker();
       final minyanMarkers = nearbyMinyans.map((minyan) {
-        debugPrint('   🛍️ [REFRESH] Creating marker for minyan: ${minyan.id} | ${minyan.locationName}');
         return Marker(
           markerId: MarkerId('minyan_${minyan.id}'),
           position: LatLng(minyan.latitude, minyan.longitude),
@@ -824,13 +822,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           },
         );
       }).toSet();
-      debugPrint('   📍 Total minyan markers created during refresh: ${minyanMarkers.length}');
 
       // Combine with existing place markers (synagogues)
       final synagogueMarkerIcon = await _createSynagogueMarker();
       final placeMarkers = currentState.synagogues.asMap().entries.map((entry) {
         final place = entry.value;
-        debugPrint('   🛍️ [REFRESH] Creating marker for place: ${place.id} | ${place.name}');
         return Marker(
           markerId: MarkerId('place_${place.id}'),
           position: LatLng(place.latitude, place.longitude),
@@ -862,24 +858,25 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           },
         );
       }).toSet();
-      debugPrint('   📍 Total place markers created during refresh: ${placeMarkers.length}');
 
       final allMarkers = {...placeMarkers, ...minyanMarkers};
-      debugPrint('   📊 All markers combined: ${allMarkers.length} (places + minyans)');
       final updatedMarkers = await _addCurrentLocationMarker(
         allMarkers,
         currentState.userLocation,
       );
-      debugPrint('   🗺️ Final markers after adding current location: ${updatedMarkers.length}');
 
-      debugPrint('\n📤 [REFRESH] Emitting new HomeMapReady state with ${updatedMarkers.length} markers');
+      // CRITICAL FIX: Preserve existing active user markers (marked with 'user_' prefix)
+      // This prevents user markers from being removed when minyans are refreshed
+      final preservedUserMarkers = currentState.markers
+          .where((marker) => marker.markerId.value.startsWith('user_'))
+          .toSet();
+      
+      final finalMarkersWithUsers = {...updatedMarkers, ...preservedUserMarkers};
 
       emit(currentState.copyWith(
         minyans: nearbyMinyans,
-        markers: updatedMarkers,
+        markers: finalMarkersWithUsers,
       ));
-      debugPrint('   ✅ State emitted! HomeMapReady should now rebuild with new markers');
-      debugPrint('✅ Nearby minyans refresh complete');
     } catch (e) {
       debugPrint('❌ Error refreshing nearby minyans: $e');
       emit(HomeError('Failed to refresh nearby minyans: ${e.toString()}'));
@@ -990,10 +987,24 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     LoadActiveUserMarkersEvent event,
     Emitter<HomeState> emit,
   ) async {
+    _retryCount = (_retryCount ?? 0) + 1;
+      
     if (state is! HomeMapReady) {
-      debugPrint('❌ LoadActiveUserMarkersEvent received but state is not HomeMapReady');
-      return;
+      // Only retry up to 5 times to prevent infinite loops
+      if (_retryCount! < 5) {
+        debugPrint('⛳ [HomeBloc] LoadActiveUserMarkersEvent received but state is not HomeMapReady, retrying in 500ms... (attempt ${_retryCount}/5)');
+        await Future.delayed(const Duration(milliseconds: 500));
+        // Recursively try again
+        return _onLoadActiveUserMarkers(event, emit);
+      } else {
+        debugPrint('⛳ [HomeBloc] Max retries reached, giving up on this event');
+        _retryCount = 0; // Reset for next event
+        return;
+      }
     }
+      
+    // Reset retry count on successful processing
+    _retryCount = 0;
 
     final currentState = state as HomeMapReady;
 
@@ -1003,14 +1014,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         return;
       }
 
-      debugPrint('🔵 [HomeBloc] Creating markers for ${event.activeUsers.length} active users');
+
 
       // Create user marker icon
       final userMarkerIcon = await MarkerBuilder.createActiveUserMarker();
 
       // Create markers for each active user
       final userMarkers = event.activeUsers.map((user) {
-        debugPrint('   🔵 Creating marker for user: ${user.name} at (${user.latitude}, ${user.longitude})');
         return Marker(
           markerId: MarkerId('user_${user.userId}'),
           position: LatLng(user.latitude, user.longitude),
@@ -1025,24 +1035,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         );
       }).toSet();
 
-      debugPrint('   📊 Total user markers created: ${userMarkers.length}');
-
       // Remove old user markers (any marker with markerId starting with 'user_')
       final existingNonUserMarkers = currentState.markers
           .where((marker) => !marker.markerId.value.startsWith('user_'))
           .toSet();
-      debugPrint('   🧹 Removed old user markers. Remaining non-user markers: ${existingNonUserMarkers.length}');
 
       // Combine non-user markers with new user markers
       final combinedMarkers = {...existingNonUserMarkers, ...userMarkers};
-      debugPrint('   🗺️ Total markers after adding users: ${combinedMarkers.length}');
 
       // Emit updated state with user markers added
       emit(currentState.copyWith(
         markers: combinedMarkers,
       ));
-
-      debugPrint('✅ User markers loaded and map state updated with ${userMarkers.length} user markers');
     } catch (e, stackTrace) {
       debugPrint('❌ Error loading active user markers: $e');
       debugPrint('Stack trace: $stackTrace');
