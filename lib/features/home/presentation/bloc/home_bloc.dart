@@ -281,12 +281,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           },
         );
         if (userLocation != null) {
-          debugPrint('📍 Current location obtained: $userLocation');
-        } else {
-          debugPrint('⚠️ Location service returned null');
+          }
+        else {
+          // Location service returned null
         }
       } catch (locationError) {
-        debugPrint('⚠️ Location service error: $locationError');
+        // Location service error: $locationError
         // Continue with null location - map will show default location
       }
 
@@ -300,9 +300,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             return [];
           },
         );
-        debugPrint('📍 Loaded ${savedPlaces.length} saved places');
+        // Loaded ${savedPlaces.length} saved places
       } catch (placesError) {
-        debugPrint('⚠️ Failed to load places: $placesError');
+        // Failed to load places: $placesError
         // Continue with empty places list
       }
 
@@ -933,10 +933,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         selectedRouteMinyanId: event.minyanId,
       ));
 
-      debugPrint('✅ Route displayed with ${finalRoutePoints.length} points');
+      // Route displayed with ${finalRoutePoints.length} points
     } catch (e) {
-      debugPrint('❌ Error drawing route: $e');
-      debugPrint('📄 Stack trace: ${StackTrace.current}');
+      // Error drawing route: $e
+      // Stack trace: ${StackTrace.current}
     }
   }
 
@@ -954,9 +954,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         selectedRouteMinyanId: null,
       ));
 
-      debugPrint('✅ Route cleared from map');
+      // Route cleared from map
     } catch (e) {
-      debugPrint('❌ Error clearing route: $e');
+      // Error clearing route: $e
     }
   }
 
@@ -967,7 +967,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   ) async {
     // This event is handled by the UI layer (home_page.dart) via BlocListener
     // The BLoC just acknowledges receipt of the event for potential logging/tracking
-    debugPrint('👀 ShowMinyanDetailsEvent received for minyan: ${event.minyan.id}');
+    // ShowMinyanDetailsEvent received for minyan: ${event.minyan.id}
   }
 
   /// Handle clearing the selected minyan

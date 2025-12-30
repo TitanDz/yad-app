@@ -40,12 +40,23 @@ class LoadSentInvitationsEvent extends InvitationEvent {
   List<Object?> get props => [userId];
 }
 
+class LoadAcceptanceNotificationsEvent extends InvitationEvent {
+  final String userId;
+
+  const LoadAcceptanceNotificationsEvent(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}
+
 class SendInvitationsEvent extends InvitationEvent {
   final String minyanId;
   final String senderId;
   final String senderName;
   final List<String> recipientIds;
   final String minyanDetails;
+  final List<String> recipientNames; // NEW: Track names
+  final List<double> distances; // NEW: Track distances
 
   const SendInvitationsEvent({
     required this.minyanId,
@@ -53,10 +64,12 @@ class SendInvitationsEvent extends InvitationEvent {
     required this.senderName,
     required this.recipientIds,
     required this.minyanDetails,
+    required this.recipientNames,
+    required this.distances,
   });
 
   @override
-  List<Object?> get props => [minyanId, senderId, senderName, recipientIds, minyanDetails];
+  List<Object?> get props => [minyanId, senderId, senderName, recipientIds, minyanDetails, recipientNames, distances];
 }
 
 class RefreshInvitationsEvent extends InvitationEvent {
@@ -133,6 +146,19 @@ class InvitationResponseRecorded extends InvitationState {
   List<Object?> get props => [invitationId, response];
 }
 
+class AcceptanceNotificationsLoaded extends InvitationState {
+  final List<InvitationResponse> notifications;
+  final int unreadCount;
+
+  const AcceptanceNotificationsLoaded({
+    required this.notifications,
+    required this.unreadCount,
+  });
+
+  @override
+  List<Object?> get props => [notifications, unreadCount];
+}
+
 class InvitationError extends InvitationState {
   final String message;
 
@@ -151,6 +177,7 @@ class InvitationBloc extends Bloc<InvitationEvent, InvitationState> {
     on<RespondToInvitationEvent>(_onRespondToInvitation);
     on<SendInvitationsEvent>(_onSendInvitations);
     on<LoadSentInvitationsEvent>(_onLoadSentInvitations);
+    on<LoadAcceptanceNotificationsEvent>(_onLoadAcceptanceNotifications);
     on<RefreshInvitationsEvent>(_onRefreshInvitations);
   }
 
@@ -180,9 +207,13 @@ class InvitationBloc extends Bloc<InvitationEvent, InvitationState> {
     Emitter<InvitationState> emit,
   ) async {
     try {
+      // For mock implementation, we'll use placeholder values
+      // In a real implementation, these would come from user context
       await dataSource.respondToInvitation(
         invitationId: event.invitationId,
         response: event.response,
+        recipientName: 'Current User', // Would be actual user name in real implementation
+        distance: 0.5, // Would be actual distance in real implementation
       );
 
       emit(InvitationResponseRecorded(event.invitationId, event.response));
@@ -220,6 +251,8 @@ class InvitationBloc extends Bloc<InvitationEvent, InvitationState> {
         senderName: event.senderName,
         recipientIds: event.recipientIds,
         minyanDetails: event.minyanDetails,
+        recipientNames: event.recipientNames,
+        distances: event.distances,
       );
 
       emit(InvitationSent(event.recipientIds.length));
@@ -256,6 +289,27 @@ class InvitationBloc extends Bloc<InvitationEvent, InvitationState> {
     } catch (e) {
       emit(InvitationError('Failed to load sent invitations: ${e.toString()}'));
       debugPrint('❌ [InvitationBloc] Error loading sent invitations: $e');
+    }
+  }
+
+  Future<void> _onLoadAcceptanceNotifications(
+    LoadAcceptanceNotificationsEvent event,
+    Emitter<InvitationState> emit,
+  ) async {
+    try {
+      emit(const InvitationLoading());
+
+      final notifications = await dataSource.getAcceptanceNotifications(event.userId);
+
+      emit(AcceptanceNotificationsLoaded(
+        notifications: notifications,
+        unreadCount: notifications.length,
+      ));
+
+      debugPrint('🔔 [InvitationBloc] Loaded ${notifications.length} acceptance notifications');
+    } catch (e) {
+      emit(InvitationError('Failed to load notifications: ${e.toString()}'));
+      debugPrint('❌ [InvitationBloc] Error loading notifications: $e');
     }
   }
 

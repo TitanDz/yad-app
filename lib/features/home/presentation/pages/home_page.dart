@@ -9,6 +9,7 @@ import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/availability_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/active_users_bloc.dart';
+import 'package:yad_app/features/home/domain/entities/active_user_marker.dart';
 import 'package:yad_app/features/home/presentation/pages/minyan_page.dart';
 import 'package:yad_app/features/home/presentation/widgets/index.dart';
 import 'package:yad_app/features/home/presentation/widgets/next_prayer_countdown.dart';
@@ -45,7 +46,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _autocompleteResults = [];
   bool _isLoadingAutocomplete = false;
   Timer? _autocompleteDebounceTimer;
-  final String _userId = 'user_123'; // Placeholder - should get from auth
+  String _userId = 'user_123'; // Will be updated from AuthBloc
   bool _refreshTriggered = false; // Flag to prevent duplicate refresh triggers
   late PrayerCountdownService _prayerCountdownService;
   List<PrayerTimeInfo> _prayerTimes = [];
@@ -59,7 +60,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    debugPrint('✅ [HomePage initState] Starting initialization...');
+
     _searchController.addListener(_onSearchChanged);
     // Initialize MinyanBloc once and reuse it
     _minyanBloc = getIt<MinyanBloc>();
@@ -69,34 +70,38 @@ class _HomePageState extends State<HomePage> {
     _availabilityBloc = getIt<AvailabilityBloc>();
     // Initialize ActiveUsersBloc for nearby user markers
     _activeUsersBloc = getIt<ActiveUsersBloc>();
-    debugPrint('✅ [HomePage initState] ActiveUsersBloc initialized: ${_activeUsersBloc.hashCode}');
+    debugPrint(
+      '✅ [HomePage initState] ActiveUsersBloc initialized: ${_activeUsersBloc.hashCode}',
+    );
     // Initialize PrayerCountdownService
     _prayerCountdownService = getIt<PrayerCountdownService>();
     // Initialize InvitationBloc for invitation system
     _invitationBloc = getIt<InvitationBloc>();
-    debugPrint('✅ [HomePage initState] InvitationBloc initialized');
-    
+
+
     // Set up listener to detect user changes
-    debugPrint('[HomePage initState] Setting up auth listener...');
+    _updateCurrentUserId(); // Initialize user ID from auth state
     _setupAuthListener();
-    debugPrint('[HomePage initState] Auth listener setup complete, _currentUserId=$_currentUserId');
-    
+    debugPrint(
+      '[HomePage initState] Auth listener setup complete, _currentUserId=$_currentUserId',
+    );
+
     // Add initialization event to HomeBloc only once
     _homeBloc.add(const InitializeMapEvent());
     // Initialize availability tracking
     _availabilityBloc.add(InitializeAvailabilityEvent(userId: _userId));
     // Load nearby active users (will trigger after map initializes)
     _loadNearbyActiveUsers();
-    
+
     // Reset refresh flag when the page comes back into focus
     _refreshTriggered = false;
-    
+
     // Initialize prayer times with default location
     _initializePrayerTimes();
-    
+
     // Get user location and city/country
     _getUserLocationAndCity();
-    debugPrint('✅ [HomePage initState] Initialization complete');
+
   }
 
   @override
@@ -104,7 +109,7 @@ class _HomePageState extends State<HomePage> {
     super.didUpdateWidget(oldWidget);
     // Always check for user changes when widget updates
     // This catches cases where user navigates back after logging in with a different account
-    debugPrint('🔄 [HomePage didUpdateWidget] Widget updated, checking user change...');
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndHandleUserChange();
     });
@@ -139,24 +144,28 @@ class _HomePageState extends State<HomePage> {
       final authBloc = getIt<AuthBloc>();
       // Get current user ID from auth state
       _updateCurrentUserId();
-      
-      debugPrint('[_setupAuthListener] Initialized with user ID: $_currentUserId');
-      
+
+
+
       // Listen for auth state changes using stream listener
-      authBloc.stream.listen((authState) {
-        debugPrint('[_setupAuthListener] **STREAM EVENT** AuthBloc emitted state: ${authState.runtimeType}');
-        final userId = _extractUserIdFromAuthState(authState);
-        debugPrint('[_setupAuthListener] Extracted userId from state: $userId');
-        _checkAndHandleUserChange();
-      }, onError: (error) {
-        debugPrint('[_setupAuthListener] Stream error: $error');
-      }, onDone: () {
-        debugPrint('[_setupAuthListener] Stream closed/done');
-      });
-      
-      debugPrint('[_setupAuthListener] Stream listener registered successfully');
+      authBloc.stream.listen(
+        (authState) {
+          // AuthBloc emitted state: ${authState.runtimeType}
+          final userId = _extractUserIdFromAuthState(authState);
+          // Extracted userId from state: $userId
+          _checkAndHandleUserChange();
+        },
+        onError: (error) {
+          // Stream error: $error
+        },
+        onDone: () {
+          // Stream closed/done
+        },
+      );
+
+
     } catch (e) {
-      debugPrint('[_setupAuthListener] Could not set up auth listener: $e');
+      // Could not set up auth listener: $e
     }
   }
 
@@ -179,9 +188,12 @@ class _HomePageState extends State<HomePage> {
       final authState = authBloc.state;
       final newUserId = _extractUserIdFromAuthState(authState);
       _currentUserId = newUserId;
-      debugPrint('👤 [_updateCurrentUserId] Current user ID: $_currentUserId');
+      if (newUserId != null) {
+        _userId = newUserId; // Update the _userId from auth state
+      }
+      // Current user ID: $_currentUserId
     } catch (e) {
-      debugPrint('⚠️ [_updateCurrentUserId] Error: $e');
+      // Error: $e
     }
   }
 
@@ -191,21 +203,30 @@ class _HomePageState extends State<HomePage> {
       final authBloc = getIt<AuthBloc>();
       final authState = authBloc.state;
       final newUserId = _extractUserIdFromAuthState(authState);
-      
-      debugPrint('[_checkAndHandleUserChange] Current: $_currentUserId, New: $newUserId, AuthState: ${authState.runtimeType}');
-      
+
+      // Current: $_currentUserId, New: $newUserId, AuthState: ${authState.runtimeType}
+
       // If user ID changed, reset and reload nearby users
       if (newUserId != null && _currentUserId != newUserId) {
-        debugPrint('[_checkAndHandleUserChange] **USER SWITCHED** from $_currentUserId to $newUserId');
+        debugPrint(
+          '[_checkAndHandleUserChange] **USER SWITCHED** from $_currentUserId to $newUserId',
+        );
         debugPrint('[_checkAndHandleUserChange] Resetting flags for new user');
         _currentUserId = newUserId;
-        _activeUsersLoaded = false;  // CRITICAL: Reset flag to allow reload
-        _refreshTriggered = false;    // Reset refresh flag
-        debugPrint('[_checkAndHandleUserChange] Calling _loadNearbyActiveUsers(forceReload: true)');
+        if (newUserId != null) {
+          _userId = newUserId; // Update the _userId when user changes
+        }
+        _activeUsersLoaded = false; // CRITICAL: Reset flag to allow reload
+        _refreshTriggered = false; // Reset refresh flag
+        debugPrint(
+          '[_checkAndHandleUserChange] Calling _loadNearbyActiveUsers(forceReload: true)',
+        );
         _loadNearbyActiveUsers(forceReload: true);
         debugPrint('[_checkAndHandleUserChange] User switch handling complete');
       } else {
-        debugPrint('[_checkAndHandleUserChange] No user change detected (newUserId=$newUserId, _currentUserId=$_currentUserId)');
+        debugPrint(
+          '[_checkAndHandleUserChange] No user change detected (newUserId=$newUserId, _currentUserId=$_currentUserId)',
+        );
       }
     } catch (e) {
       debugPrint('[_checkAndHandleUserChange] Error checking user: $e');
@@ -219,13 +240,13 @@ class _HomePageState extends State<HomePage> {
       const double defaultLat = 40.7128; // NYC
       const double defaultLon = -74.0060;
       final timeZone = UserPreferencesManager.detectTimeZone();
-      
+
       _prayerCountdownService.initialize(
         latitude: defaultLat,
         longitude: defaultLon,
         timeZone: timeZone,
       );
-      
+
       _prayerCountdownService.addListener((prayerTimes) {
         if (mounted) {
           setState(() {
@@ -234,7 +255,7 @@ class _HomePageState extends State<HomePage> {
           });
         }
       });
-      
+
       // Get initial prayer times
       setState(() {
         _prayerTimes = _prayerCountdownService.getPrayerTimes();
@@ -248,24 +269,30 @@ class _HomePageState extends State<HomePage> {
 
   /// Load nearby active users on the map
   void _loadNearbyActiveUsers({bool forceReload = false}) {
-    debugPrint('🔵 [_loadNearbyActiveUsers] Called, checking HomeBloc state...');
+    debugPrint(
+      '🔵 [_loadNearbyActiveUsers] Called, checking HomeBloc state...',
+    );
     debugPrint('   Current state type: ${_homeBloc.state.runtimeType}');
     debugPrint('   _activeUsersLoaded flag: $_activeUsersLoaded');
     debugPrint('   forceReload: $forceReload');
-    
+
     // Check if map is ready right away
     final homeState = _homeBloc.state;
     if (homeState is HomeMapReady) {
       if (_activeUsersLoaded && !forceReload) {
-        debugPrint('🔵 [_loadNearbyActiveUsers] Users already loaded, skipping...');
+        debugPrint(
+          '🔵 [_loadNearbyActiveUsers] Users already loaded, skipping...',
+        );
         return;
       }
-      
+
       // Use user location or fallback to NYC
       final latitude = homeState.userLocation?.latitude ?? 40.7128;
       final longitude = homeState.userLocation?.longitude ?? -74.0060;
-      
-      debugPrint('🔵 [_loadNearbyActiveUsers] Map is ready! Loading nearby active users from ($latitude, $longitude)...');
+
+      debugPrint(
+        '🔵 [_loadNearbyActiveUsers] Map is ready! Loading nearby active users from ($latitude, $longitude)...',
+      );
       _activeUsersBloc.add(
         LoadNearbyUsersEvent(
           latitude: latitude,
@@ -277,7 +304,9 @@ class _HomePageState extends State<HomePage> {
       // This is now handled by the BlocListener for ActiveUsersBloc
     } else {
       // If not ready yet, schedule a retry
-      debugPrint('⏳ [_loadNearbyActiveUsers] Map not ready yet (state: ${homeState.runtimeType})');
+      debugPrint(
+        '⏳ [_loadNearbyActiveUsers] Map not ready yet (state: ${homeState.runtimeType})',
+      );
       debugPrint('   Will retry in 500ms...');
       Future.delayed(const Duration(milliseconds: 500), () {
         debugPrint('🔵 [_loadNearbyActiveUsers] Retrying after delay...');
@@ -289,7 +318,7 @@ class _HomePageState extends State<HomePage> {
   /// Handle sending invitations to nearby users
   void _handleSendInvitations() {
     final homeState = _homeBloc.state;
-    
+
     // Check if map is ready
     if (homeState is! HomeMapReady) {
       debugPrint('❌ [_handleSendInvitations] Map not ready');
@@ -301,15 +330,22 @@ class _HomePageState extends State<HomePage> {
 
     // Check if nearby users have been loaded
     final activeUsersState = _activeUsersBloc.state;
-    if (activeUsersState is! ActiveUsersLoaded || activeUsersState.users.isEmpty) {
+    if (activeUsersState is! ActiveUsersLoaded ||
+        activeUsersState.users.isEmpty) {
       debugPrint('❌ [_handleSendInvitations] No nearby users loaded');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No nearby users found. Try moving to a different location.')),
+        const SnackBar(
+          content: Text(
+            'No nearby users found. Try moving to a different location.',
+          ),
+        ),
       );
       return;
     }
 
-    debugPrint('✅ [_handleSendInvitations] Opening invitation sheet with ${activeUsersState.users.length} nearby users');
+    debugPrint(
+      '✅ [_handleSendInvitations] Opening invitation sheet with ${activeUsersState.users.length} nearby users',
+    );
 
     // Show the SendInvitationsSheet
     showModalBottomSheet(
@@ -322,7 +358,33 @@ class _HomePageState extends State<HomePage> {
           // Send invitations to selected users
           if (selectedUserIds.isEmpty) return;
 
-          debugPrint('📤 [_handleSendInvitations] Sending invitations to ${selectedUserIds.length} users');
+          debugPrint(
+            '📤 [_handleSendInvitations] Sending invitations to ${selectedUserIds.length} users',
+          );
+
+          // Extract recipient names and distances from active users
+          final selectedNames = <String>[];
+          final selectedDistances = <double>[];
+
+          if (activeUsersState is ActiveUsersLoaded) {
+            for (final userId in selectedUserIds) {
+              final user = activeUsersState.users.firstWhere(
+                (u) => u.userId == userId,
+                orElse: () => ActiveUserMarker(
+                  userId: userId,
+                  name: 'Unknown User',
+                  latitude: 0,
+                  longitude: 0,
+                  address: '',
+                  isAvailable: false,
+                  minutesUnavailable: 0,
+                  distance: 0.5,
+                ),
+              );
+              selectedNames.add(user.name);
+              selectedDistances.add(user.distance ?? 0.5);
+            }
+          }
 
           // Use InvitationBloc to send invitations
           _invitationBloc.add(
@@ -332,25 +394,32 @@ class _HomePageState extends State<HomePage> {
               senderName: 'Current User',
               recipientIds: selectedUserIds,
               minyanDetails: 'Minyan - Prayer Time TBD',
+              recipientNames: selectedNames,
+              distances: selectedDistances,
             ),
           );
 
           // Show confirmation
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Sent invitations to ${selectedUserIds.length} users')),
+            SnackBar(
+              content: Text(
+                'Sent invitations to ${selectedUserIds.length} users',
+              ),
+            ),
           );
         },
       ),
     );
   }
+
   Future<void> _getUserLocationAndCity() async {
     try {
       final homeBloc = context.read<HomeBloc>();
       final state = homeBloc.state;
-      
+
       if (state is HomeMapReady && state.userLocation != null) {
         final location = state.userLocation!;
-        
+
         // Reinitialize prayer times with actual location
         final timeZone = UserPreferencesManager.detectTimeZone();
         _prayerCountdownService.dispose();
@@ -359,20 +428,24 @@ class _HomePageState extends State<HomePage> {
           longitude: location.longitude,
           timeZone: timeZone,
         );
-        
+
         // Reverse geocode to get city and country
         try {
           final placemarks = await placemarkFromCoordinates(
             location.latitude,
             location.longitude,
           );
-          
+
           if (placemarks.isNotEmpty) {
             final placemark = placemarks.first;
-            final city = placemark.locality ?? placemark.administrativeArea ?? '';
+            final city =
+                placemark.locality ?? placemark.administrativeArea ?? '';
             final country = placemark.country ?? '';
-            final cityCountry = [city, country].where((s) => s.isNotEmpty).join(', ');
-            
+            final cityCountry = [
+              city,
+              country,
+            ].where((s) => s.isNotEmpty).join(', ');
+
             if (mounted) {
               setState(() {
                 _cityCountry = cityCountry;
@@ -408,9 +481,9 @@ class _HomePageState extends State<HomePage> {
           '&key=$apiKey'
           '&sessiontoken=$sessionToken';
 
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 5),
-      );
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -423,9 +496,11 @@ class _HomePageState extends State<HomePage> {
           for (var i = 0; i < predictions.length && i < 5; i++) {
             final prediction = predictions[i] as Map<String, dynamic>;
             final placeId = prediction['place_id'] as String?;
-            final structuredFormatting = prediction['structured_formatting'] as Map<String, dynamic>?;
+            final structuredFormatting =
+                prediction['structured_formatting'] as Map<String, dynamic>?;
             final mainText = structuredFormatting?['main_text'] as String?;
-            final secondaryText = structuredFormatting?['secondary_text'] as String?;
+            final secondaryText =
+                structuredFormatting?['secondary_text'] as String?;
 
             if (placeId != null && mainText != null) {
               results.add({
@@ -484,9 +559,9 @@ class _HomePageState extends State<HomePage> {
           '&fields=geometry,formatted_address'
           '&key=$apiKey';
 
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 5),
-      );
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -503,10 +578,7 @@ class _HomePageState extends State<HomePage> {
             // Animate camera to selected location
             _mapController!.animateCamera(
               CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: LatLng(lat, lng),
-                  zoom: 17.0,
-                ),
+                CameraPosition(target: LatLng(lat, lng), zoom: 17.0),
               ),
             );
 
@@ -540,11 +612,7 @@ class _HomePageState extends State<HomePage> {
         child: Stack(
           alignment: Alignment.topRight,
           children: [
-            Icon(
-              Icons.notifications,
-              color: AppTheme.divinity,
-              size: 24,
-            ),
+            Icon(Icons.notifications, color: AppTheme.divinity, size: 24),
             // Red dot badge for unread notifications
             Container(
               width: 8,
@@ -574,10 +642,7 @@ class _HomePageState extends State<HomePage> {
           assetPath,
           width: 24,
           height: 24,
-          colorFilter: ColorFilter.mode(
-            AppTheme.divinity,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(AppTheme.divinity, BlendMode.srcIn),
         ),
       ),
     );
@@ -593,11 +658,7 @@ class _HomePageState extends State<HomePage> {
         color: isSelected ? const Color(0xFFC9DDFC) : Colors.transparent,
       ),
       child: Center(
-        child: Icon(
-          Icons.schedule,
-          color: AppTheme.divinity,
-          size: 24,
-        ),
+        child: Icon(Icons.schedule, color: AppTheme.divinity, size: 24),
       ),
     );
   }
@@ -756,7 +817,10 @@ class _HomePageState extends State<HomePage> {
                 label: 'Home',
               ),
               BottomNavigationBarItem(
-                icon: _buildBottomNavIcon('assets/images/Navbar/calendar.svg', 1),
+                icon: _buildBottomNavIcon(
+                  'assets/images/Navbar/calendar.svg',
+                  1,
+                ),
                 label: 'Minyans',
               ),
               BottomNavigationBarItem(
@@ -773,8 +837,11 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: _selectedIndex == 0
           ? QuickActionFAB(
-              isAvailable: _availabilityBloc.state is AvailabilityLoaded &&
-                  !(_availabilityBloc.state as AvailabilityLoaded).status.isCurrentlyUnavailable,
+              isAvailable:
+                  _availabilityBloc.state is AvailabilityLoaded &&
+                  !(_availabilityBloc.state as AvailabilityLoaded)
+                      .status
+                      .isCurrentlyUnavailable,
               onSendInvitations: () {
                 _handleSendInvitations();
               },
@@ -797,770 +864,841 @@ class _HomePageState extends State<HomePage> {
       return BlocProvider<ActiveUsersBloc>.value(
         value: _activeUsersBloc,
         child: Column(
-        children: [
-          // Enhanced app header bar (Avatar, Title, Settings) - improved for visibility and safe area
-          Container(
-            color: AppTheme.primary,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Left side: Avatar
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          shape: BoxShape.circle,
+          children: [
+            // Enhanced app header bar (Avatar, Title, Settings) - improved for visibility and safe area
+            Container(
+              color: AppTheme.primary,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Left side: Avatar
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      // Center: Personalized greeting message
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: StatefulBuilder(
-                            builder: (context, setState) {
-                              String greeting = 'Welcome';
-                              
-                              // Get user from AuthBloc using service locator
-                              try {
-                                final authBloc = getIt<AuthBloc>();
-                                final authState = authBloc.state;
-                                
-                                if (authState is AuthAuthenticated) {
-                                  greeting = 'Welcome, ${authState.user.firstName}';
-                                } else if (authState is AuthLoginSuccess) {
-                                  greeting = 'Welcome, ${authState.user.firstName}';
-                                } else if (authState is AuthRegistrationSuccess) {
-                                  greeting = 'Welcome, ${authState.user.firstName}';
+                        // Center: Personalized greeting message
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: StatefulBuilder(
+                              builder: (context, setState) {
+                                String greeting = 'Welcome';
+
+                                // Get user from AuthBloc using service locator
+                                try {
+                                  final authBloc = getIt<AuthBloc>();
+                                  final authState = authBloc.state;
+
+                                  if (authState is AuthAuthenticated) {
+                                    greeting =
+                                        'Welcome, ${authState.user.firstName}';
+                                  } else if (authState is AuthLoginSuccess) {
+                                    greeting =
+                                        'Welcome, ${authState.user.firstName}';
+                                  } else if (authState
+                                      is AuthRegistrationSuccess) {
+                                    greeting =
+                                        'Welcome, ${authState.user.firstName}';
+                                  }
+                                } catch (e) {
+                                  debugPrint(
+                                    '⚠️ [HomePage] Could not read AuthBloc: $e',
+                                  );
                                 }
-                              } catch (e) {
-                                debugPrint('⚠️ [HomePage] Could not read AuthBloc: $e');
-                              }
-                              
-                              return Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    greeting,
-                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                        ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              );
+
+                                return Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      greeting,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        // Right side: Settings Button
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.mail_outline,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: () {
+                              context.push('/invitations');
                             },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Invitations',
                           ),
                         ),
-                      ),
-                      // Right side: Settings Button
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.mail_outline,
-                            color: Colors.white,
-                            size: 24,
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            shape: BoxShape.circle,
                           ),
-                          onPressed: () {
-                            context.push('/invitations');
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          tooltip: 'Invitations',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.settings,
-                            color: Colors.white,
-                            size: 24,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.settings,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: () {
+                              context.push('/settings');
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Settings',
                           ),
-                          onPressed: () {
-                            context.push('/settings');
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          tooltip: 'Settings',
                         ),
-                      ),
-                    ],
-                  ),
-                  // Availability Toggle - enhanced spacing
-                  const SizedBox(height: 12),
-                  BlocProvider<AvailabilityBloc>.value(
-                    value: _availabilityBloc,
-                    child: AvailabilityToggleWidget(
-                      userId: _userId,
-                      onAvailabilityChanged: () {
-                        // Trigger any additional updates needed
-                      },
+                      ],
                     ),
-                  ),
-                  // Next Prayer Countdown - shows upcoming prayer with timer
-                  NextPrayerCountdown(
-                    prayerTimes: _prayerTimes,
-                    isLoading: _prayerTimesLoading,
-                  ),
-                ],
+                    // Availability Toggle - enhanced spacing
+                    const SizedBox(height: 12),
+                    BlocProvider<AvailabilityBloc>.value(
+                      value: _availabilityBloc,
+                      child: AvailabilityToggleWidget(
+                        userId: _userId,
+                        onAvailabilityChanged: () {
+                          // Trigger any additional updates needed
+                        },
+                      ),
+                    ),
+                    // Next Prayer Countdown - shows upcoming prayer with timer
+                    NextPrayerCountdown(
+                      prayerTimes: _prayerTimes,
+                      isLoading: _prayerTimesLoading,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          // Map area - expanded to use remaining space (no prayer panel above it)
-          Expanded(
-            child: Stack(
-              children: [
-                // Full screen map
-                BlocBuilder<HomeBloc, HomeState>(
-                  builder: (context, state) {
-                    debugPrint('[HomePage.BlocBuilder] Rebuilding with state type: ${state.runtimeType}');
-                    if (state is HomeLoading) {
-                      return Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      );
-                    }
+            // Map area - expanded to use remaining space (no prayer panel above it)
+            Expanded(
+              child: Stack(
+                children: [
+                  // Full screen map
+                  BlocBuilder<HomeBloc, HomeState>(
+                    builder: (context, state) {
 
-                    if (state is HomeMapReady) {
-                      debugPrint('[HomePage.BlocBuilder] HomeMapReady state - markers count: ${state.markers.length}, minyans count: ${state.minyans.length}');
-                      final userLocation = state.userLocation;
-                      final initialPosition = userLocation != null
-                          ? LatLng(userLocation.latitude, userLocation.longitude)
-                          : const LatLng(40.7128, -74.0060);
-
-                      return Stack(
-                        children: [
-                          GoogleMap(
-                            key: ValueKey('map_${state.markers.length}_${state.polylines.length}'),  // Force rebuild when markers or polylines change
-                            onMapCreated: _onMapCreated,
-                            initialCameraPosition: CameraPosition(
-                              target: initialPosition,
-                              zoom: 15.0,
+                      if (state is HomeLoading) {
+                        return Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).colorScheme.primary,
                             ),
-                            markers: state.markers,
-                            polylines: state.polylines,
-                            myLocationEnabled: false,
-                            myLocationButtonEnabled: false,
-                            zoomControlsEnabled: false,
-                            style: Theme.of(context).brightness == Brightness.dark
-                                ? _getDarkMapStyle()
-                                : null,
                           ),
-                          // Remove gradient overlay (was shadowing prayer panel)
-                        ],
-                      );
-                    }
+                        );
+                      }
 
-                    if (state is HomeError) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      if (state is HomeMapReady) {
+
+                        final userLocation = state.userLocation;
+                        final initialPosition = userLocation != null
+                            ? LatLng(
+                                userLocation.latitude,
+                                userLocation.longitude,
+                              )
+                            : const LatLng(40.7128, -74.0060);
+
+                        return Stack(
                           children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              state.message,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                                fontSize: 14,
+                            GoogleMap(
+                              key: ValueKey(
+                                'map_${state.markers.length}_${state.polylines.length}',
+                              ), // Force rebuild when markers or polylines change
+                              onMapCreated: _onMapCreated,
+                              initialCameraPosition: CameraPosition(
+                                target: initialPosition,
+                                zoom: 15.0,
                               ),
+                              markers: state.markers,
+                              polylines: state.polylines,
+                              myLocationEnabled: false,
+                              myLocationButtonEnabled: false,
+                              zoomControlsEnabled: false,
+                              style:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? _getDarkMapStyle()
+                                  : null,
                             ),
+                            // Remove gradient overlay (was shadowing prayer panel)
                           ],
-                        ),
-                      );
-                    }
-
-                    return const SizedBox();
-                  },
-                ),
-
-                // BlocListener to automatically refresh when map is ready
-                BlocListener<HomeBloc, HomeState>(
-                  listener: (context, state) {
-                    if (state is HomeMapReady && !_refreshTriggered) {
-                      debugPrint('\n🎯 [BlocListener] Map became ready! Triggering auto-refresh to load nearby minyans...');
-                      _refreshTriggered = true;
-                      _homeBloc.add(const RefreshNearbyMiniyansEvent());
-                      // Load active users after map is ready (with a small delay to ensure state is updated)
-                      Future.delayed(const Duration(milliseconds: 100), () {
-                        _loadNearbyActiveUsers();
-                      });
-                    }
-                  },
-                  child: const SizedBox.shrink(),
-                ),
-
-                // BlocListener to retry loading active users when map becomes ready and users haven't loaded yet
-                BlocListener<HomeBloc, HomeState>(
-                  listenWhen: (previous, current) {
-                    // Detect transition to HomeMapReady state when users haven't been loaded
-                    if (current is HomeMapReady && !_activeUsersLoaded) {
-                      // Only trigger if this is a state transition (not just a marker update)
-                      if (previous is! HomeMapReady || (previous is HomeMapReady && previous.minyans.length != current.minyans.length)) {
-                        return true;
+                        );
                       }
-                    }
-                    return false;
-                  },
-                  listener: (context, state) {
-                    if (state is HomeMapReady && !_activeUsersLoaded) {
-                      debugPrint('\n🎯 [BlocListener] Detected HomeMapReady without loaded users - retrying active user load...');
-                      Future.delayed(const Duration(milliseconds: 200), () {
-                        _loadNearbyActiveUsers();
-                      });
-                    }
-                  },
-                  child: const SizedBox.shrink(),
-                ),
-                
-                // BlocListener for active user markers - dispatch when users load
-                BlocListener<ActiveUsersBloc, ActiveUsersState>(
-                  listenWhen: (previous, current) {
-                    // Trigger whenever we have loaded users (even if reloading from same state)
-                    return current is ActiveUsersLoaded && current.users.isNotEmpty;
-                  },
-                  listener: (context, activeUsersState) {
-                    if (activeUsersState is ActiveUsersLoaded) {
-                      debugPrint('🔵 [ActiveUsersBloc] Loaded ${activeUsersState.users.length} active users - dispatching to HomeBloc...');
-                      _homeBloc.add(LoadActiveUserMarkersEvent(activeUsersState.users));
-                      // NOTE: Do NOT set flag here - it will be set when markers actually appear
-                    }
-                  },
-                  child: const SizedBox.shrink(),
-                ),
-                // Additional listener: If users loaded but map not ready, re-dispatch when map becomes ready
-                BlocListener<HomeBloc, HomeState>(
-                  listenWhen: (previous, current) {
-                    // Detect when map transitions to HomeMapReady AND users are loaded but not displayed
-                    if (current is HomeMapReady && previous is! HomeMapReady && !_activeUsersLoaded) {
-                      final activeUsersState = context.read<ActiveUsersBloc>().state;
-                      return activeUsersState is ActiveUsersLoaded && activeUsersState.users.isNotEmpty;
-                    }
-                    return false;
-                  },
-                  listener: (context, homeState) {
-                    if (homeState is HomeMapReady && !_activeUsersLoaded) {
-                      final activeUsersState = context.read<ActiveUsersBloc>().state;
-                      if (activeUsersState is ActiveUsersLoaded && activeUsersState.users.isNotEmpty) {
-                        debugPrint('🔵 [Safety Listener] Map ready and users loaded but not displayed - re-dispatching event...');
-                        _homeBloc.add(LoadActiveUserMarkersEvent(activeUsersState.users));
-                      }
-                    }
-                  },
-                  child: const SizedBox.shrink(),
-                ),
-                // BlocListener to mark users as loaded when HomeBloc confirms markers are displayed
-                BlocListener<HomeBloc, HomeState>(
-                  listenWhen: (previous, current) {
-                    // Detect when user markers are added to the map
-                    if (current is HomeMapReady && previous is HomeMapReady) {
-                      // Check if user markers count increased (indicates new user markers added)
-                      final previousUserMarkers = previous.markers
-                          .where((m) => m.markerId.value.startsWith('user_'))
-                          .length;
-                      final currentUserMarkers = current.markers
-                          .where((m) => m.markerId.value.startsWith('user_'))
-                          .length;
-                      return currentUserMarkers > previousUserMarkers;
-                    }
-                    return false;
-                  },
-                  listener: (context, state) {
-                    if (state is HomeMapReady) {
-                      final userMarkersCount = state.markers
-                          .where((m) => m.markerId.value.startsWith('user_'))
-                          .length;
-                      if (userMarkersCount > 0) {
-                        debugPrint('🎯 [HomeBloc Listener] Detected ${userMarkersCount} user markers on map - setting flag...');
-                        _activeUsersLoaded = true;
-                      }
-                    }
-                  },
-                  child: const SizedBox.shrink(),
-                ),
-                BlocListener<HomeBloc, HomeState>(
-                  listenWhen: (previous, current) {
-                    // Listen when selectedMinyan changes (and is not null)
-                    if (previous is HomeMapReady && current is HomeMapReady) {
-                      return previous.selectedMinyan != current.selectedMinyan && current.selectedMinyan != null;
-                    }
-                    return false;
-                  },
-                  listener: (context, state) {
-                    if (state is HomeMapReady && state.selectedMinyan != null) {
-                      // Show the minyan summary sheet
-                      _showMinyanSummarySheet(state.selectedMinyan!);
-                    }
-                  },
-                  child: const SizedBox.shrink(),
-                ),
 
-                // Floating Search Bar (overlaying map)
-                Positioned(
-                  top: 12,
-                  left: 16,
-                  right: 16,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SearchLocationBar(
-                        controller: _searchController,
-                        onSearch: (query) {
-                          // Cancel previous timer
-                          _autocompleteDebounceTimer?.cancel();
-
-                          if (query.isEmpty) {
-                            setState(() {
-                              _autocompleteResults = [];
-                              _isLoadingAutocomplete = false;
-                            });
-                            return;
-                          }
-
-                          // Show loading state immediately
-                          if (!_isLoadingAutocomplete) {
-                            setState(() => _isLoadingAutocomplete = true);
-                          }
-
-                          // Debounce API call by 300ms
-                          _autocompleteDebounceTimer = Timer(
-                            const Duration(milliseconds: 300),
-                            () => _fetchAutocompleteResults(query),
-                          );
-                        },
-                        onClear: _onClearSearch,
-                      ),
-                      // Autocomplete dropdown with loading state
-                      if (_isLoadingAutocomplete)
-                        Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: SizedBox(
-                            height: 40,
-                            child: Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      else if (_autocompleteResults.isEmpty && _searchController.text.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: Row(
+                      if (state is HomeError) {
+                        return Center(
+                          child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.location_off,
-                                size: 20,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                Icons.error_outline,
+                                size: 48,
+                                color: Theme.of(context).colorScheme.error,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(height: 16),
                               Text(
-                                'No locations found',
+                                state.message,
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context).colorScheme.error,
                                   fontSize: 14,
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      else if (_autocompleteResults.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        );
+                      }
+
+                      return const SizedBox();
+                    },
+                  ),
+
+                  // BlocListener to automatically refresh when map is ready
+                  BlocListener<HomeBloc, HomeState>(
+                    listener: (context, state) {
+                      if (state is HomeMapReady && !_refreshTriggered) {
+                        debugPrint(
+                          '\n🎯 [BlocListener] Map became ready! Triggering auto-refresh to load nearby minyans...',
+                        );
+                        _refreshTriggered = true;
+                        _homeBloc.add(const RefreshNearbyMiniyansEvent());
+                        // Load active users after map is ready (with a small delay to ensure state is updated)
+                        Future.delayed(const Duration(milliseconds: 100), () {
+                          _loadNearbyActiveUsers();
+                        });
+                      }
+                    },
+                    child: const SizedBox.shrink(),
+                  ),
+
+                  // BlocListener to retry loading active users when map becomes ready and users haven't loaded yet
+                  BlocListener<HomeBloc, HomeState>(
+                    listenWhen: (previous, current) {
+                      // Detect transition to HomeMapReady state when users haven't been loaded
+                      if (current is HomeMapReady && !_activeUsersLoaded) {
+                        // Only trigger if this is a state transition (not just a marker update)
+                        if (previous is! HomeMapReady ||
+                            (previous is HomeMapReady &&
+                                previous.minyans.length !=
+                                    current.minyans.length)) {
+                          return true;
+                        }
+                      }
+                      return false;
+                    },
+                    listener: (context, state) {
+                      if (state is HomeMapReady && !_activeUsersLoaded) {
+                        debugPrint(
+                          '\n🎯 [BlocListener] Detected HomeMapReady without loaded users - retrying active user load...',
+                        );
+                        Future.delayed(const Duration(milliseconds: 200), () {
+                          _loadNearbyActiveUsers();
+                        });
+                      }
+                    },
+                    child: const SizedBox.shrink(),
+                  ),
+
+                  // BlocListener for active user markers - dispatch when users load
+                  BlocListener<ActiveUsersBloc, ActiveUsersState>(
+                    listenWhen: (previous, current) {
+                      // Trigger whenever we have loaded users (even if reloading from same state)
+                      return current is ActiveUsersLoaded &&
+                          current.users.isNotEmpty;
+                    },
+                    listener: (context, activeUsersState) {
+                      if (activeUsersState is ActiveUsersLoaded) {
+
+                        _homeBloc.add(
+                          LoadActiveUserMarkersEvent(activeUsersState.users),
+                        );
+                        // NOTE: Do NOT set flag here - it will be set when markers actually appear
+                      }
+                    },
+                    child: const SizedBox.shrink(),
+                  ),
+                  // Additional listener: If users loaded but map not ready, re-dispatch when map becomes ready
+                  BlocListener<HomeBloc, HomeState>(
+                    listenWhen: (previous, current) {
+                      // Detect when map transitions to HomeMapReady AND users are loaded but not displayed
+                      if (current is HomeMapReady &&
+                          previous is! HomeMapReady &&
+                          !_activeUsersLoaded) {
+                        final activeUsersState = context
+                            .read<ActiveUsersBloc>()
+                            .state;
+                        return activeUsersState is ActiveUsersLoaded &&
+                            activeUsersState.users.isNotEmpty;
+                      }
+                      return false;
+                    },
+                    listener: (context, homeState) {
+                      if (homeState is HomeMapReady && !_activeUsersLoaded) {
+                        final activeUsersState = context
+                            .read<ActiveUsersBloc>()
+                            .state;
+                        if (activeUsersState is ActiveUsersLoaded &&
+                            activeUsersState.users.isNotEmpty) {
+
+                          _homeBloc.add(
+                            LoadActiveUserMarkersEvent(activeUsersState.users),
+                          );
+                        }
+                      }
+                    },
+                    child: const SizedBox.shrink(),
+                  ),
+                  // BlocListener to mark users as loaded when HomeBloc confirms markers are displayed
+                  BlocListener<HomeBloc, HomeState>(
+                    listenWhen: (previous, current) {
+                      // Detect when user markers are added to the map
+                      if (current is HomeMapReady && previous is HomeMapReady) {
+                        // Check if user markers count increased (indicates new user markers added)
+                        final previousUserMarkers = previous.markers
+                            .where((m) => m.markerId.value.startsWith('user_'))
+                            .length;
+                        final currentUserMarkers = current.markers
+                            .where((m) => m.markerId.value.startsWith('user_'))
+                            .length;
+                        return currentUserMarkers > previousUserMarkers;
+                      }
+                      return false;
+                    },
+                    listener: (context, state) {
+                      if (state is HomeMapReady) {
+                        final userMarkersCount = state.markers
+                            .where((m) => m.markerId.value.startsWith('user_'))
+                            .length;
+                        if (userMarkersCount > 0) {
+
+                          _activeUsersLoaded = true;
+                        }
+                      }
+                    },
+                    child: const SizedBox.shrink(),
+                  ),
+                  BlocListener<HomeBloc, HomeState>(
+                    listenWhen: (previous, current) {
+                      // Listen when selectedMinyan changes (and is not null)
+                      if (previous is HomeMapReady && current is HomeMapReady) {
+                        return previous.selectedMinyan !=
+                                current.selectedMinyan &&
+                            current.selectedMinyan != null;
+                      }
+                      return false;
+                    },
+                    listener: (context, state) {
+                      if (state is HomeMapReady &&
+                          state.selectedMinyan != null) {
+                        // Show the minyan summary sheet
+                        _showMinyanSummarySheet(state.selectedMinyan!);
+                      }
+                    },
+                    child: const SizedBox.shrink(),
+                  ),
+
+                  // Floating Search Bar (overlaying map)
+                  Positioned(
+                    top: 12,
+                    left: 16,
+                    right: 16,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SearchLocationBar(
+                          controller: _searchController,
+                          onSearch: (query) {
+                            // Cancel previous timer
+                            _autocompleteDebounceTimer?.cancel();
+
+                            if (query.isEmpty) {
+                              setState(() {
+                                _autocompleteResults = [];
+                                _isLoadingAutocomplete = false;
+                              });
+                              return;
+                            }
+
+                            // Show loading state immediately
+                            if (!_isLoadingAutocomplete) {
+                              setState(() => _isLoadingAutocomplete = true);
+                            }
+
+                            // Debounce API call by 300ms
+                            _autocompleteDebounceTimer = Timer(
+                              const Duration(milliseconds: 300),
+                              () => _fetchAutocompleteResults(query),
+                            );
+                          },
+                          onClear: _onClearSearch,
+                        ),
+                        // Autocomplete dropdown with loading state
+                        if (_isLoadingAutocomplete)
+                          Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant
+                                    .withValues(alpha: 0.5),
+                              ),
                             ),
+                            child: SizedBox(
+                              height: 40,
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (_autocompleteResults.isEmpty &&
+                            _searchController.text.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.location_off,
+                                  size: 20,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'No locations found',
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (_autocompleteResults.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant
+                                    .withValues(alpha: 0.5),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            constraints: const BoxConstraints(maxHeight: 200),
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: _autocompleteResults.length,
+                              itemBuilder: (context, index) {
+                                final result = _autocompleteResults[index];
+                                return InkWell(
+                                  onTap: () => _selectAutocompleteResult(
+                                    result['placeId'] as String,
+                                    result['name'] as String,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      border:
+                                          index <
+                                              _autocompleteResults.length - 1
+                                          ? Border(
+                                              bottom: BorderSide(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .outlineVariant
+                                                    .withValues(alpha: 0.3),
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.location_on,
+                                          size: 18,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                result['name'] as String,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.onSurface,
+                                                ),
+                                              ),
+                                              if ((result['address'] as String)
+                                                  .isNotEmpty)
+                                                Text(
+                                                  result['address'] as String,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // Map controls (Zoom + Current Location)
+                  Positioned(
+                    bottom: 100,
+                    right: 16,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Zoom In button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
                             ],
                           ),
-                          constraints: const BoxConstraints(maxHeight: 200),
-                          child: ListView.builder(
-                            padding: EdgeInsets.zero,
-                            itemCount: _autocompleteResults.length,
-                            itemBuilder: (context, index) {
-                              final result = _autocompleteResults[index];
-                              return InkWell(
-                                onTap: () => _selectAutocompleteResult(
-                                  result['placeId'] as String,
-                                  result['name'] as String,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                _mapController?.animateCamera(
+                                  CameraUpdate.zoomBy(1),
+                                );
+                              },
+                              customBorder: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 20,
                                 ),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    border: index < _autocompleteResults.length - 1
-                                        ? Border(
-                                            bottom: BorderSide(
-                                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.location_on,
-                                        size: 18,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              result['name'] as String,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Theme.of(context).colorScheme.onSurface,
-                                              ),
-                                            ),
-                                            if ((result['address'] as String).isNotEmpty)
-                                              Text(
-                                                result['address'] as String,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                          ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Zoom Out button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                _mapController?.animateCamera(
+                                  CameraUpdate.zoomBy(-1),
+                                );
+                              },
+                              customBorder: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.remove,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Current Location button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                // Get current location from BLoC state
+                                final state = context.read<HomeBloc>().state;
+                                if (state is HomeMapReady &&
+                                    state.userLocation != null) {
+                                  _mapController?.animateCamera(
+                                    CameraUpdate.newCameraPosition(
+                                      CameraPosition(
+                                        target: LatLng(
+                                          state.userLocation!.latitude,
+                                          state.userLocation!.longitude,
                                         ),
+                                        zoom: 15.0,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  );
+                                }
+                              },
+                              customBorder: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.my_location,
+                                  color: Colors.white,
+                                  size: 20,
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
-                // Map controls (Zoom + Current Location)
-                Positioned(
-                  bottom: 100,
-                  right: 16,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Zoom In button
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(context).colorScheme.primary,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              _mapController?.animateCamera(
-                                CameraUpdate.zoomBy(1),
-                              );
-                            },
-                            customBorder: const CircleBorder(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 20,
+                  // Map controls (Zoom + Current Location)
+                  Positioned(
+                    bottom: 100,
+                    right: 16,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Zoom In button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
+                            ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Zoom Out button
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(context).colorScheme.primary,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              _mapController?.animateCamera(
-                                CameraUpdate.zoomBy(-1),
-                              );
-                            },
-                            customBorder: const CircleBorder(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Icon(
-                                Icons.remove,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Current Location button
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(context).colorScheme.primary,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              // Get current location from BLoC state
-                              final state = context.read<HomeBloc>().state;
-                              if (state is HomeMapReady && state.userLocation != null) {
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
                                 _mapController?.animateCamera(
-                                  CameraUpdate.newCameraPosition(
-                                    CameraPosition(
-                                      target: LatLng(
-                                        state.userLocation!.latitude,
-                                        state.userLocation!.longitude,
-                                      ),
-                                      zoom: 15.0,
-                                    ),
-                                  ),
+                                  CameraUpdate.zoomBy(1),
                                 );
-                              }
-                            },
-                            customBorder: const CircleBorder(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Icon(
-                                Icons.my_location,
-                                color: Colors.white,
-                                size: 20,
+                              },
+                              customBorder: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Map controls (Zoom + Current Location)
-                Positioned(
-                  bottom: 100,
-                  right: 16,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Zoom In button
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(context).colorScheme.primary,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              _mapController?.animateCamera(
-                                CameraUpdate.zoomBy(1),
-                              );
-                            },
-                            customBorder: const CircleBorder(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 20,
+                        const SizedBox(height: 8),
+                        // Zoom Out button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
+                            ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Zoom Out button
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(context).colorScheme.primary,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              _mapController?.animateCamera(
-                                CameraUpdate.zoomBy(-1),
-                              );
-                            },
-                            customBorder: const CircleBorder(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Icon(
-                                Icons.remove,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Current Location button
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(context).colorScheme.primary,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              // Get current location from BLoC state
-                              final state = context.read<HomeBloc>().state;
-                              if (state is HomeMapReady && state.userLocation != null) {
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
                                 _mapController?.animateCamera(
-                                  CameraUpdate.newCameraPosition(
-                                    CameraPosition(
-                                      target: LatLng(
-                                        state.userLocation!.latitude,
-                                        state.userLocation!.longitude,
-                                      ),
-                                      zoom: 15.0,
-                                    ),
-                                  ),
+                                  CameraUpdate.zoomBy(-1),
                                 );
-                              }
-                            },
-                            customBorder: const CircleBorder(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Icon(
-                                Icons.my_location,
-                                color: Colors.white,
-                                size: 20,
+                              },
+                              customBorder: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.remove,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        // Current Location button
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                // Get current location from BLoC state
+                                final state = context.read<HomeBloc>().state;
+                                if (state is HomeMapReady &&
+                                    state.userLocation != null) {
+                                  _mapController?.animateCamera(
+                                    CameraUpdate.newCameraPosition(
+                                      CameraPosition(
+                                        target: LatLng(
+                                          state.userLocation!.latitude,
+                                          state.userLocation!.longitude,
+                                        ),
+                                        zoom: 15.0,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              customBorder: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.my_location,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       );
     } else if (_selectedIndex == 1) {
       // Minyans view

@@ -50,22 +50,19 @@ class _InvitationsPageWrapper extends StatelessWidget {
       
       if (authState is AuthAuthenticated) {
         userId = authState.user.id;
-        debugPrint('✅ [_InvitationsPageWrapper] Got user ID from AuthAuthenticated: $userId');
       } else if (authState is AuthLoginSuccess) {
         userId = authState.user.id;
-        debugPrint('✅ [_InvitationsPageWrapper] Got user ID from AuthLoginSuccess: $userId');
       } else if (authState is AuthRegistrationSuccess) {
         userId = authState.user.id;
-        debugPrint('✅ [_InvitationsPageWrapper] Got user ID from AuthRegistrationSuccess: $userId');
       } else {
-        debugPrint('⚠️ [_InvitationsPageWrapper] Unknown auth state type: ${authState.runtimeType}');
+        // Unknown auth state type: ${authState.runtimeType}
       }
     } catch (e) {
       // If AuthBloc is not available, use fallback
-      debugPrint('⚠️ [_InvitationsPageWrapper] Could not read AuthBloc: $e');
+      // Could not read AuthBloc: $e
     }
 
-    debugPrint('📋 [_InvitationsPageWrapper] Loading invitations for user: $userId');
+    // Loading invitations for user: $userId
     
     return invitations.InvitationsPage(
       currentUserId: userId,

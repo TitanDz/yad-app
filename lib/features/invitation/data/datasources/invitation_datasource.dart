@@ -9,19 +9,26 @@ abstract class InvitationDataSource {
     required String senderName,
     required List<String> recipientIds,
     required String minyanDetails,
+    required List<String> recipientNames, // NEW: Track recipient names
+    required List<double> distances, // NEW: Track distances for each recipient
   });
 
-  /// Get pending invitations for current user
+  /// Get pending invitations for current user (as recipient)
   Future<List<Invitation>> getPendingInvitations(String userId);
 
   /// Respond to invitation
   Future<void> respondToInvitation({
     required String invitationId,
     required InvitationStatus response,
+    required String recipientName, // NEW: Track who responded
+    required double distance, // NEW: Track distance
   });
 
   /// Get sent invitations (for organizer to track responses)
   Future<List<Invitation>> getSentInvitations(String userId);
+
+  /// Get acceptance notifications for sender
+  Future<List<InvitationResponse>> getAcceptanceNotifications(String userId);
 
   /// Get all invitations (for debugging)
   Future<List<Invitation>> getAllInvitations();
@@ -30,6 +37,7 @@ abstract class InvitationDataSource {
 /// Mock implementation for testing
 class MockInvitationDataSource implements InvitationDataSource {
   static final List<Invitation> _invitations = [];
+  static final List<InvitationResponse> _acceptanceNotifications = [];
 
   @override
   Future<void> sendInvitations({
@@ -38,24 +46,31 @@ class MockInvitationDataSource implements InvitationDataSource {
     required String senderName,
     required List<String> recipientIds,
     required String minyanDetails,
+    required List<String> recipientNames,
+    required List<double> distances,
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
 
-    for (final recipientId in recipientIds) {
+    for (int i = 0; i < recipientIds.length; i++) {
+      final recipientId = recipientIds[i];
+      final recipientName = recipientNames.length > i ? recipientNames[i] : 'Unknown User';
+      final distance = distances.length > i ? distances[i] : 0.5;
+
       final invitation = Invitation(
         invitationId: 'inv_${DateTime.now().millisecondsSinceEpoch}_${recipientId.hashCode}',
         minyanId: minyanId,
         senderId: senderId,
         senderName: senderName,
         recipientId: recipientId,
+        recipientName: recipientName,
         sentAt: DateTime.now(),
         status: InvitationStatus.pending,
         minyanDetails: minyanDetails,
-        distanceKm: 0.5,
+        distanceKm: distance,
       );
 
       _invitations.add(invitation);
-      debugPrint('✅ [Invitation] Sent to $recipientId: ${invitation.invitationId}');
+      debugPrint('✅ [Invitation] Sent to $recipientName ($recipientId): ${invitation.invitationId} (Distance: ${distance.toStringAsFixed(1)}km), senderId: ${invitation.senderId}');
     }
   }
 
@@ -69,6 +84,9 @@ class MockInvitationDataSource implements InvitationDataSource {
         .toList();
 
     debugPrint('📬 [Invitation] Found ${pending.length} pending invitations for $userId');
+    for (final inv in pending) {
+      debugPrint('   From: ${inv.senderName} (${inv.distanceKm.toStringAsFixed(1)}km away)');
+    }
     return pending;
   }
 
@@ -76,20 +94,56 @@ class MockInvitationDataSource implements InvitationDataSource {
   Future<void> respondToInvitation({
     required String invitationId,
     required InvitationStatus response,
+    required String recipientName,
+    required double distance,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
+    debugPrint('🔔 [Invitation] respondToInvitation called for invitationId: $invitationId');
+    debugPrint('🔔 [Invitation] Current _invitations count: ${_invitations.length}');
+    
     final index = _invitations.indexWhere((inv) => inv.invitationId == invitationId);
+    
     if (index != -1) {
       final old = _invitations[index];
+      debugPrint('🔔 [Invitation] Found invitation to respond to: senderId=${old.senderId}, senderName=${old.senderName}, recipientId=${old.recipientId}, recipientName=${old.recipientName}');
+      
       _invitations[index] = old.copyWith(
         status: response,
         respondedAt: DateTime.now(),
       );
 
-      debugPrint(
-        '✅ [Invitation] Response recorded: ${response.toString().split('.').last.toUpperCase()}',
-      );
+      // Create notification for sender
+      if (response == InvitationStatus.accepted) {
+        debugPrint('✅ [Invitation] Creating acceptance notification: senderId=${old.senderId}, oldSenderId=${old.senderId}, oldSenderName=${old.senderName}, oldRecipientId=${old.recipientId}');
+        
+        final notification = InvitationResponse(
+          senderId: old.senderId, // The user who sent the original invitation
+          recipientId: old.recipientId, // The user who accepted (was the original recipient)
+          recipientName: recipientName,
+          response: response,
+          respondedAt: DateTime.now(),
+          distanceKm: distance,
+        );
+        _acceptanceNotifications.add(notification);
+        
+        debugPrint(
+          '✅ [Invitation] $recipientName ACCEPTED invitation from ${old.senderName} (Distance: ${distance.toStringAsFixed(1)}km)',
+        );
+        debugPrint(
+          '✅ [Invitation] Created notification: senderId=${notification.senderId}, recipient=${notification.recipientId}, stored in list (total now: ${_acceptanceNotifications.length})',
+        );
+      } else {
+        debugPrint(
+          '❌ [Invitation] $recipientName DECLINED invitation from ${old.senderName}',
+        );
+      }
+    } else {
+      debugPrint('❌ [Invitation] Invitation with ID $invitationId not found!');
+      debugPrint('🔔 [Invitation] Available invitation IDs:');
+      for (final inv in _invitations) {
+        debugPrint('   - ${inv.invitationId} (sender: ${inv.senderId}, recipient: ${inv.recipientId})');
+      }
     }
   }
 
@@ -106,6 +160,32 @@ class MockInvitationDataSource implements InvitationDataSource {
   }
 
   @override
+  Future<List<InvitationResponse>> getAcceptanceNotifications(String userId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    debugPrint('🔔 [Invitation] Looking for acceptance notifications for user $userId');
+    debugPrint('🔔 [Invitation] Total _acceptanceNotifications: ${_acceptanceNotifications.length}');
+    
+    // Log all existing notifications for debugging
+    for (int i = 0; i < _acceptanceNotifications.length; i++) {
+      final notification = _acceptanceNotifications[i];
+      debugPrint('🔔 [Invitation] Notification $i: senderId=${notification.senderId}, recipientId=${notification.recipientId}, name=${notification.recipientName}');
+    }
+    
+    // Get all acceptance notifications where the sender is the current user
+    final acceptances = _acceptanceNotifications
+        .where((notification) => notification.senderId == userId)
+        .toList();
+    
+    debugPrint('🔔 [Invitation] Found ${acceptances.length} acceptance notifications for user $userId');
+    
+    for (final acc in acceptances) {
+      debugPrint('   ${acc.recipientName} accepted your invitation (${acc.distanceKm.toStringAsFixed(1)}km away)');
+    }
+    return acceptances;
+  }
+
+  @override
   Future<List<Invitation>> getAllInvitations() async {
     await Future.delayed(const Duration(milliseconds: 100));
     return _invitations;
@@ -114,7 +194,8 @@ class MockInvitationDataSource implements InvitationDataSource {
   /// Clear all invitations (useful for testing)
   static void clearAllInvitations() {
     _invitations.clear();
-    debugPrint('🗑️ [Invitation] All invitations cleared');
+    _acceptanceNotifications.clear();
+    debugPrint('🗑️ [Invitation] All invitations and notifications cleared');
   }
 
   /// Get invitation by ID (for debugging)

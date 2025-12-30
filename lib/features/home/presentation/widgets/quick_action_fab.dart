@@ -68,7 +68,7 @@ class _QuickActionFABState extends State<QuickActionFAB>
         // Main FAB button
         Positioned(
           bottom: 24,
-          right: 24,
+          left: 24,
           child: ScaleTransition(
             scale: Tween<double>(begin: 1.0, end: 0.8).animate(_animationController),
             child: FloatingActionButton(
@@ -94,7 +94,7 @@ class _QuickActionFABState extends State<QuickActionFAB>
       // Send Invitations action
       Positioned(
         bottom: 120,
-        right: 24,
+        left: 24,
         child: ScaleTransition(
           scale: _buildItemScale(0),
           child: SlideTransition(
@@ -110,33 +110,14 @@ class _QuickActionFABState extends State<QuickActionFAB>
           ),
         ),
       ),
-      // Search action
+      // Availability toggle action (moved to second position)
       Positioned(
         bottom: 180,
-        right: 24,
+        left: 24,
         child: ScaleTransition(
           scale: _buildItemScale(1),
           child: SlideTransition(
             position: _buildItemOffset(1),
-            child: _buildActionButton(
-              icon: Icons.search,
-              label: 'Quick Search',
-              onTap: () {
-                _toggleMenu();
-                widget.onSearch?.call();
-              },
-            ),
-          ),
-        ),
-      ),
-      // Availability toggle action
-      Positioned(
-        bottom: 240,
-        right: 24,
-        child: ScaleTransition(
-          scale: _buildItemScale(2),
-          child: SlideTransition(
-            position: _buildItemOffset(2),
             child: _buildActionButton(
               icon: widget.isAvailable
                   ? Icons.do_not_disturb_off_outlined
@@ -168,7 +149,7 @@ class _QuickActionFABState extends State<QuickActionFAB>
     final staggerInterval = 50.0;
     final delay = index * staggerInterval / 300.0;
     return Tween<Offset>(
-      begin: const Offset(0.5, 0),
+      begin: const Offset(-0.5, 0),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
@@ -192,16 +173,19 @@ class _QuickActionFABState extends State<QuickActionFAB>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppTheme.divinity.withValues(alpha: 0.1),
-              border: Border.all(
-                color: AppTheme.divinity.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
+              color: AppTheme.divinity.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Icon(
               icon,
-              color: AppTheme.divinity,
+              color: Colors.white,
               size: 24,
             ),
           ),
