@@ -62,12 +62,12 @@ class MockGroupLobbyDataSource implements GroupLobbyDataSource {
       final updatedParticipants = Set<String>.from(lobby.participantIds)..add(participantId);
       final updatedLobby = lobby.copyWith(
         participantIds: updatedParticipants.toList(),
-        isReady: updatedParticipants.length >= 10,
-        activatedAt: updatedParticipants.length >= 10 ? DateTime.now() : lobby.activatedAt,
-        status: updatedParticipants.length >= 10 ? 'active' : 'forming',
+        isReady: updatedParticipants.length >= 2,
+        activatedAt: updatedParticipants.length >= 2 ? DateTime.now() : lobby.activatedAt,
+        status: updatedParticipants.length >= 2 ? 'active' : 'forming',
       );
       _lobbies[lobbyId] = updatedLobby;
-      print('👥 [GroupLobby] Added participant $participantId to lobby ${lobbyId}, total: ${updatedParticipants.length}, ready: ${updatedParticipants.length >= 10}');
+      print('👥 [GroupLobby] Added participant $participantId to lobby ${lobbyId}, total: ${updatedParticipants.length}, ready: ${updatedParticipants.length >= 2}');
     }
   }
 

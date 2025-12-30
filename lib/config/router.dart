@@ -18,6 +18,7 @@ import 'package:yad_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:yad_app/features/home/presentation/bloc/minyan_bloc.dart';
 import 'package:yad_app/features/home/presentation/pages/home_page.dart';
 import 'package:yad_app/features/home/presentation/pages/create_minyan_page.dart';
+import 'package:yad_app/features/home/presentation/pages/location_suggestions_page.dart';
 import 'package:yad_app/features/settings/data/datasources/settings_datasource.dart';
 import 'package:yad_app/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:yad_app/features/settings/presentation/pages/settings_page.dart';
@@ -162,6 +163,16 @@ class AppRouter {
           GoRoute(
             path: 'about',
             builder: (context, state) => const AboutPage(),
+          ),
+          GoRoute(
+            path: 'location-suggestions',
+            builder: (context, state) {
+              final routeExtra = state.extra;
+              final lobby = routeExtra is Map<String, dynamic>
+                  ? routeExtra['lobby']
+                  : null;
+              return LocationSuggestionsPage(lobby: lobby);
+            },
           ),
           GoRoute(
             path: 'create-minyan',

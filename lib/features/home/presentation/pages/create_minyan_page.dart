@@ -78,7 +78,7 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
       });
     });
     
-    // Load minyan data from route extras if editing
+    // Load minyan data from route extras if editing or from lobby
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final routeExtra = GoRouterState.of(context).extra;
       if (routeExtra is Minyan) {
@@ -104,6 +104,30 @@ class _CreateMinyanPageState extends State<CreateMinyanPage> {
         });
         // After loading minyan data, reverse geocode to get address details
         _loadAddressDetailsForEditingMinyan(minyan.latitude, minyan.longitude, minyan.locationName);
+      } else if (routeExtra is Map<String, dynamic>) {
+        // Lobby creation mode: extract lobby information if available
+        final lobby = routeExtra['lobby'];
+        final selectedLocation = routeExtra['selectedLocation'] as Map<String, dynamic>?;
+        
+        if (selectedLocation != null) {
+          // Location was selected from suggestions
+          debugPrint('🎯 [CreateMinyanPage] Creating minyan with selected location: ${selectedLocation['name']}');
+          setState(() {
+            _minyanData.locationName = selectedLocation['name'] as String?;
+            _minyanData.latitude = selectedLocation['latitude'] as double?;
+            _minyanData.longitude = selectedLocation['longitude'] as double?;
+            _minyanData.fullAddress = selectedLocation['address'] as String?;
+          });
+          // Load user preferences for other fields
+          _loadUserPreferences();
+        } else if (lobby != null) {
+          debugPrint('🎯 [CreateMinyanPage] Creating minyan from lobby: ${lobby.lobbyId}');
+          // We have lobby information but no location yet, so we'll just load user preferences
+          _loadUserPreferences();
+        } else {
+          // Create mode: load user preferences
+          _loadUserPreferences();
+        }
       } else {
         // Create mode: load user preferences
         _loadUserPreferences();

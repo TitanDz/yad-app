@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:yad_app/features/invitation/domain/entities/group_lobby.dart';
 import 'package:yad_app/features/invitation/presentation/bloc/group_lobby_bloc.dart';
 
@@ -165,34 +166,18 @@ class GroupLobbyWidget extends StatelessWidget {
             
             // Action buttons
             if (lobby.hasRequiredParticipants)
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Navigate to minyan creation page
-                        print('Navigating to minyan creation for lobby: ${lobby.lobbyId}');
-                      },
-                      icon: const Icon(Icons.group_work),
-                      label: const Text('Create Minyan'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        // Navigate to communication page
-                        print('Opening communication channel for lobby: ${lobby.lobbyId}');
-                      },
-                      icon: const Icon(Icons.chat),
-                      label: const Text('Chat'),
-                    ),
-                  ),
-                ],
+              ElevatedButton.icon(
+                onPressed: () {
+                  // Navigate to location suggestions page with lobby information
+                  GoRouter.of(context).go('/location-suggestions', extra: {'lobby': lobby});
+                },
+                icon: const Icon(Icons.group_work),
+                label: const Text('Create Minyan'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 48),
+                ),
               )
             else
               Text(

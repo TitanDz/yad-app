@@ -61,9 +61,9 @@ class GroupLobby extends Equatable {
     );
   }
 
-  // Check if lobby has reached required number of participants (10 for minyan)
-  bool get hasRequiredParticipants => participantIds.length >= 10;
+  // Check if lobby has reached required number of participants (temporarily changed to 2 for testing)
+  bool get hasRequiredParticipants => participantIds.length >= 2;
 
   // Get the number of participants needed to reach threshold
-  int get participantsNeeded => hasRequiredParticipants ? 0 : 10 - participantIds.length;
+  int get participantsNeeded => hasRequiredParticipants ? 0 : 2 - participantIds.length;
 }
