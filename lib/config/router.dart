@@ -34,6 +34,7 @@ import 'package:yad_app/features/settings/presentation/pages/about_page.dart';
 import 'package:yad_app/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:yad_app/features/auth/presentation/pages/welcome_page.dart';
 import 'package:yad_app/features/invitation/presentation/bloc/invitation_bloc.dart';
+import 'package:yad_app/features/home/presentation/bloc/active_users_bloc.dart';
 
 // Wrapper widget to access AuthBloc context for invitations page
 class _InvitationsPageWrapper extends StatelessWidget {
@@ -114,8 +115,15 @@ class AppRouter {
       ),
       GoRoute(
         path: home,
-        builder: (context, state) => BlocProvider<HomeBloc>.value(
-          value: getIt<HomeBloc>(),
+        builder: (context, state) => MultiBlocProvider(
+          providers: [
+            BlocProvider<HomeBloc>.value(
+              value: getIt<HomeBloc>(),
+            ),
+            BlocProvider<ActiveUsersBloc>.value(
+              value: getIt<ActiveUsersBloc>(),
+            ),
+          ],
           child: const HomePage(),
         ),
         routes: [

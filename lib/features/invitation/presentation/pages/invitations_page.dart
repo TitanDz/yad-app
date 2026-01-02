@@ -83,29 +83,48 @@ class _InvitationsPageState extends State<InvitationsPage>
       ),
       body: Column(
         children: [
-          // Group Lobby Information
+          // ABOVE TABS: Create Minyan Button (when threshold is met)
           BlocBuilder<GroupLobbyBloc, GroupLobbyState>(
             bloc: _groupLobbyBloc,
             builder: (context, state) {
-              if (state is UserLobbiesLoaded && state.lobbies.isNotEmpty) {
-                // Show the first active lobby if available
-                final lobby = state.lobbies.first;
-                return GroupLobbyWidget(
-                  lobby: lobby,
-                  currentUserId: widget.currentUserId,
-                );
-              } else if (state is GroupLobbyLoaded) {
-                return GroupLobbyWidget(
-                  lobby: state.lobby,
-                  currentUserId: widget.currentUserId,
-                );
-              } else {
-                // Show placeholder when no lobbies are active
-                return Container();
+              // Check if we have an active lobby that's ready
+              bool hasReadyLobby = false;
+              if ((state is UserLobbiesLoaded && state.lobbies.isNotEmpty) ||
+                  state is GroupLobbyLoaded) {
+                final lobby = state is UserLobbiesLoaded 
+                    ? state.lobbies.first 
+                    : (state as GroupLobbyLoaded).lobby;
+                hasReadyLobby = lobby.hasRequiredParticipants;
               }
+              
+              // Only show button if threshold is met
+              if (hasReadyLobby) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Show the lobby in a bottom sheet or navigate to it
+                      if (state is UserLobbiesLoaded && state.lobbies.isNotEmpty) {
+                        _showLobbySheet(state.lobbies.first);
+                      } else if (state is GroupLobbyLoaded) {
+                        _showLobbySheet(state.lobby);
+                      }
+                    },
+                    icon: const Icon(Icons.group_work),
+                    label: const Text('View Minyan Lobby'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 56),
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
-          // Tab content
+          // TAB CONTENT
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -365,5 +384,32 @@ class _InvitationsPageState extends State<InvitationsPage>
     setState(() {
       _loadingInvitationId = null;
     });
+  }
+
+  void _showLobbySheet(dynamic lobby) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: GroupLobbyWidget(
+            lobby: lobby,
+            currentUserId: widget.currentUserId,
+          ),
+        ),
+      ),
+    );
   }
 }
