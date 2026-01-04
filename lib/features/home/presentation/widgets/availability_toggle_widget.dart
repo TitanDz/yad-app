@@ -39,9 +39,10 @@ class AvailabilityToggleWidget extends StatelessWidget {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Icon and Text
-                Expanded(
+                Flexible(
                   child: Row(
                     children: [
                       Icon(
